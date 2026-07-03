@@ -646,12 +646,14 @@ function renderStats() {
   const wakeups = events.filter(e => e.type === 'wake' && dayKey(e.t) === today).length;
   const aw = awakeIntervals().filter(([s, e]) => dayKey(e) === today);
   const avgAwake = aw.length ? aw.reduce((s, [a, b]) => s + (b - a), 0) / aw.length : 0;
+  const longest = sessionsToday.length ? Math.max(...sessionsToday.map(([a, b]) => b - a)) : 0;
 
   $('metricGrid').innerHTML = `
     <div class="metric"><div class="k">Сон за сегодня</div><div class="v">${ds.total ? fmtDur(ds.total) : '—'}</div></div>
     <div class="metric"><div class="k">Кормлений</div><div class="v">${feedsToday.length}${mlToday ? ' · ' + mlToday + ' мл' : ''}</div></div>
     <div class="metric"><div class="k">Средний сон</div><div class="v">${avg ? fmtDur(avg) : '—'}</div></div>
     <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${avgAwake ? fmtDur(avgAwake) : '—'}</div></div>
+    <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${longest ? fmtDur(longest) : '—'}</div></div>
     <div class="metric"><div class="k">Пробуждений</div><div class="v">${wakeups}</div></div>`;
 
   const chart = $('chart');
