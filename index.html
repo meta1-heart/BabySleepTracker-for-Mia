@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Мия</title>
+<meta name="theme-color" content="#F7F5FC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17152A" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Мия">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#F7F5FC; --card:#FFFFFF; --text:#2A2440; --muted:#8B85A3; --line:#ECEAF4;
+  --primary:#6C60D8; --primary-soft:#EEECFB;
+  --night:#2E2A5C; --night-text:#EDEBFF;
+  --awake:#FFF1D0; --awake-text:#8A5B08;
+  --teal:#0F6E56; --teal-soft:#E1F5EE;
+  --pink:#993556; --pink-soft:#FBEAF0;
+  --amber:#B97A10; --amber-soft:#FAEEDA;
+  --danger:#C43B3B;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#17152A; --card:#221F3B; --text:#EFEDFA; --muted:#9A94B8; --line:#322E52;
+    --primary:#9C92F0; --primary-soft:#2C2850;
+    --night:#262253; --night-text:#EDEBFF;
+    --awake:#3A3050; --awake-text:#FFD98A;
+    --teal:#5DCAA5; --teal-soft:#173B31;
+    --pink:#ED93B1; --pink-soft:#3D2230;
+    --amber:#FAC775; --amber-soft:#3B3020;
+    --danger:#F09595;
+  }
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0;}
+html,body{height:100%; overscroll-behavior:none;}
+body{
+  font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, "Segoe UI", sans-serif;
+  background:var(--bg); color:var(--text);
+  display:flex; flex-direction:column; height:100dvh; overflow:hidden;
+  -webkit-user-select:none; user-select:none;
+}
+header{
+  padding: calc(10px + env(safe-area-inset-top)) 20px 10px;
+  display:flex; align-items:baseline; gap:10px;
+}
+header h1{font-size:26px; font-weight:700;}
+header .age{font-size:14px; color:var(--muted); font-weight:500;}
+main{flex:1; overflow:hidden; position:relative;}
+#panels{display:flex; width:300%; height:100%; will-change:transform;}
+.panel{width:33.3333%; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:6px 20px 120px;}
+.panel h2{font-size:14px; font-weight:600; color:var(--muted); margin:20px 0 10px; text-transform:none;}
+
+/* --- status card --- */
+#statusCard{border-radius:22px; padding:26px 20px; text-align:center; position:relative; overflow:hidden; transition:background .4s;}
+#statusCard.sleep{background:var(--night); color:var(--night-text);}
+#statusCard.awake{background:var(--awake); color:var(--awake-text);}
+#statusCard.none{background:var(--card); color:var(--muted); border:1px solid var(--line);}
+#statusCard .big{font-size:44px; line-height:1;}
+#statusCard .label{font-size:20px; font-weight:700; margin-top:8px;}
+#statusCard .since{font-size:14px; opacity:.85; margin-top:4px; font-variant-numeric:tabular-nums;}
+.star{position:absolute; color:#CDC7FF; font-size:11px; animation:twinkle 2.6s ease-in-out infinite;}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:1}}
+.zzz{position:absolute; font-size:14px; opacity:0; animation:floatz 3.2s linear infinite; color:#CDC7FF;}
+@keyframes floatz{0%{transform:translateY(0);opacity:0}20%{opacity:.9}100%{transform:translateY(-34px);opacity:0}}
+#sunwrap{display:inline-block; animation:sunspin 40s linear infinite;}
+@keyframes sunspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* --- todo --- */
+.todoRow{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-bottom:8px; font-size:16px;}
+.todoRow .box{width:24px; height:24px; border-radius:8px; border:2px solid var(--muted); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:15px;}
+.todoRow.done .box{background:var(--primary); border-color:var(--primary);}
+.todoRow.done .t{color:var(--muted); text-decoration:line-through;}
+.todoRow .t{flex:1;}
+.todoRow .del{color:var(--danger); font-size:18px; padding:0 4px;}
+#todoHead{display:flex; align-items:baseline; justify-content:space-between;}
+#todoEditBtn{font-size:13px; color:var(--primary); font-weight:600; background:none; border:none; font-family:inherit;}
+#todoAdd{display:flex; gap:8px; margin-top:4px;}
+#todoAdd input{flex:1; font:inherit; font-size:16px; padding:10px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--text);}
+#todoAdd button{font:inherit; font-weight:600; padding:10px 16px; border-radius:12px; border:none; background:var(--primary); color:#fff;}
+
+/* --- fab --- */
+#fab{
+  position:absolute; left:50%; transform:translateX(-50%);
+  bottom:calc(18px + env(safe-area-inset-bottom));
+  width:64px; height:64px; border-radius:50%; border:none;
+  background:var(--primary); color:#fff; font-size:34px; line-height:1;
+  box-shadow:0 6px 18px rgba(84,74,183,.35);
+  transition:opacity .25s, transform .25s; z-index:5;
+}
+#fab.hiddenFab{opacity:0; pointer-events:none; transform:translateX(-50%) scale(.6);}
+#fab:active{transform:translateX(-50%) scale(.92);}
+
+/* --- history --- */
+.dayHead{font-size:13px; font-weight:600; color:var(--muted); margin:18px 0 8px;}
+.evRow{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:6px;}
+.evRow .ico{font-size:20px; width:28px; text-align:center;}
+.evRow .lbl{flex:1; font-size:16px;}
+.evRow .sub{font-size:12px; color:var(--muted);}
+.evRow .tm{font-size:14px; color:var(--muted); font-variant-numeric:tabular-nums;}
+.who{width:24px; height:24px; border-radius:50%; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.who.N{background:#E6F1FB; color:#0C447C;}
+.who.V{background:#FBEAF0; color:#72243E;}
+
+/* --- stats --- */
+.metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.metric{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px;}
+.metric .k{font-size:12px; color:var(--muted);}
+.metric .v{font-size:20px; font-weight:700; margin-top:4px; font-variant-numeric:tabular-nums;}
+#chart{display:flex; align-items:flex-end; gap:8px; height:150px; margin-top:8px; padding:0 2px;}
+.barcol{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch; height:100%;}
+.barcol .bn{background:var(--primary); border-radius:4px 4px 0 0;}
+.barcol .bd{background:var(--primary-soft);}
+.barcol .bl{font-size:10px; color:var(--muted); text-align:center; margin-top:5px;}
+.barcol .bv{font-size:10px; color:var(--muted); text-align:center; margin-bottom:3px; font-variant-numeric:tabular-nums;}
+.legend{display:flex; gap:14px; margin-top:10px; font-size:12px; color:var(--muted);}
+.legend span{display:flex; align-items:center; gap:5px;}
+.sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
+
+/* --- tab bar --- */
+nav{
+  display:flex; border-top:1px solid var(--line); background:var(--card);
+  padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+}
+nav button{flex:1; background:none; border:none; color:var(--muted); font-family:inherit; font-size:11px; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:3px;}
+nav button.on{color:var(--primary);}
+nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+
+/* --- sheet / modal --- */
+.overlay{position:fixed; inset:0; background:rgba(20,16,40,.45); z-index:20; opacity:1; transition:opacity .25s;}
+.sheet{
+  position:fixed; left:0; right:0; bottom:0; z-index:21;
+  background:var(--card); border-radius:22px 22px 0 0;
+  padding:10px 20px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(0); transition:transform .3s cubic-bezier(.3,1,.4,1);
+  max-height:88dvh; overflow-y:auto;
+}
+.hiddenS .sheet{transform:translateY(105%);}
+.hiddenS.overlay, .hiddenS .overlay{opacity:0; pointer-events:none;}
+.hidden{display:none!important;}
+.handle{width:38px; height:5px; border-radius:3px; background:var(--line); margin:4px auto 14px;}
+.sheet h3{font-size:18px; font-weight:700; margin-bottom:14px;}
+.typegrid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+.typegrid button, .seg button, .presets button{
+  font:inherit; font-size:15px; font-weight:600; padding:14px 6px; border-radius:14px;
+  border:1.5px solid var(--line); background:var(--bg); color:var(--text);
+}
+.typegrid button{display:flex; flex-direction:column; gap:6px; align-items:center;}
+.typegrid button .e{font-size:26px;}
+.typegrid button.sel, .seg button.sel, .presets button.sel{border-color:var(--primary); background:var(--primary-soft); color:var(--primary);}
+.seg{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px;}
+.presets{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px;}
+.stepper{display:flex; align-items:center; justify-content:center; gap:18px; margin-top:12px;}
+.stepper button{font:inherit; width:46px; height:46px; border-radius:50%; border:1.5px solid var(--line); background:var(--bg); color:var(--text); font-size:22px;}
+.stepper .val{font-size:24px; font-weight:700; min-width:96px; text-align:center; font-variant-numeric:tabular-nums;}
+.dtrow{display:flex; gap:8px; margin-top:16px;}
+.dtrow input{flex:1; font:inherit; font-size:16px; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--text); min-width:0;}
+.primaryBtn{
+  width:100%; margin-top:16px; font:inherit; font-size:17px; font-weight:700;
+  padding:15px; border:none; border-radius:15px; background:var(--primary); color:#fff;
+}
+.primaryBtn:disabled{opacity:.4;}
+.dangerBtn{width:100%; margin-top:8px; font:inherit; font-size:15px; font-weight:600; padding:12px; border:none; border-radius:15px; background:none; color:var(--danger);}
+
+/* --- setup overlay --- */
+#setup{position:fixed; inset:0; background:var(--bg); z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:30px; text-align:center;}
+#setup .moon{font-size:54px;}
+#setup h2{font-size:22px;}
+#setup p{color:var(--muted); font-size:15px;}
+#setup .choice{display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; max-width:340px;}
+#setup .choice button{font:inherit; font-size:17px; font-weight:700; padding:20px; border-radius:18px; border:1.5px solid var(--line); background:var(--card); color:var(--text);}
+#cfgWarn{position:fixed; inset:0; background:var(--bg); z-index:60; padding:40px 26px; overflow-y:auto; -webkit-user-select:text; user-select:text;}
+#cfgWarn h2{margin-bottom:12px;}
+#cfgWarn p, #cfgWarn li{color:var(--muted); font-size:15px; line-height:1.6; margin-bottom:8px;}
+#cfgWarn code{background:var(--card); padding:2px 6px; border-radius:6px; font-size:13px;}
+</style>
+</head>
+<body>
+
+<div id="cfgWarn" class="hidden">
+  <h2>🔧 Осталось подключить Firebase</h2>
+  <p>Приложение почти готово — нужно вставить конфиг вашего проекта Firebase.</p>
+  <ol style="padding-left:20px;">
+    <li>Зайди на <code>console.firebase.google.com</code>, создай проект</li>
+    <li>Создай Firestore Database (режим production, регион любой)</li>
+    <li>В настройках проекта добавь Web-приложение и скопируй <code>firebaseConfig</code></li>
+    <li>Вставь его в <code>index.html</code> вместо заглушки (блок <code>FIREBASE_CONFIG</code> в начале скрипта)</li>
+    <li>Подробности — в README.md</li>
+  </ol>
+</div>
+
+<div id="setup" class="hidden">
+  <div class="moon">🌙</div>
+  <h2>Дневник Мии</h2>
+  <p>Кто будет пользоваться с этого телефона?</p>
+  <div class="choice">
+    <button data-who="N">Николай</button>
+    <button data-who="V">Виктория</button>
+  </div>
+</div>
+
+<header>
+  <h1>Мия</h1>
+  <span class="age" id="age"></span>
+</header>
+
+<main>
+  <div id="panels">
+
+    <section class="panel" id="p0">
+      <div id="statusCard" class="none">
+        <div class="big">🌙</div>
+        <div class="label">Пока нет записей</div>
+        <div class="since"></div>
+      </div>
+      <div id="todoHead">
+        <h2>Дела на сегодня</h2>
+        <button id="todoEditBtn">изменить</button>
+      </div>
+      <div id="todoList"></div>
+      <div id="todoAdd" class="hidden">
+        <input id="todoInput" type="text" placeholder="Новое дело" maxlength="60">
+        <button id="todoAddBtn">＋</button>
+      </div>
+    </section>
+
+    <section class="panel" id="p1">
+      <h2>История</h2>
+      <div id="histList"></div>
+    </section>
+
+    <section class="panel" id="p2">
+      <h2>Сегодня</h2>
+      <div class="metrics" id="metricGrid"></div>
+      <h2>Сон за 7 дней</h2>
+      <div id="chart"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--primary)"></span>ночь (20:00–8:00)</span>
+        <span><span class="sw" style="background:var(--primary-soft)"></span>день</span>
+      </div>
+    </section>
+
+  </div>
+  <button id="fab" aria-label="Добавить запись">＋</button>
+</main>
+
+<nav>
+  <button id="tab0" class="on">
+    <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+    Сейчас
+  </button>
+  <button id="tab1">
+    <svg viewBox="0 0 24 24"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+    История
+  </button>
+  <button id="tab2">
+    <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
+    Аналитика
+  </button>
+</nav>
+
+<div id="addWrap" class="hiddenS">
+  <div class="overlay" data-close="add"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3>Новая запись</h3>
+    <div class="typegrid">
+      <button data-t="sleep"><span class="e">🌙</span>Уснула</button>
+      <button data-t="wake"><span class="e">☀️</span>Проснулась</button>
+      <button data-t="feed"><span class="e">🍼</span>Кормление</button>
+    </div>
+    <div id="feedBlock" class="hidden">
+      <div class="seg">
+        <button data-f="breast">🤱 Грудь</button>
+        <button data-f="bottle">🍼 Бутылочка</button>
+      </div>
+      <div id="mlBlock" class="hidden">
+        <div class="presets">
+          <button data-ml="60">60 мл</button>
+          <button data-ml="90">90 мл</button>
+          <button data-ml="120">120 мл</button>
+        </div>
+        <div class="stepper">
+          <button id="mlMinus">−</button>
+          <div class="val"><span id="mlVal">90</span> мл</div>
+          <button id="mlPlus">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="dtrow">
+      <input type="date" id="evDate">
+      <input type="time" id="evTime">
+    </div>
+    <button class="primaryBtn" id="saveEv" disabled>Записать</button>
+  </div>
+</div>
+
+<div id="editWrap" class="hiddenS">
+  <div class="overlay" data-close="edit"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 id="editTitle">Запись</h3>
+    <div id="editMlBlock" class="hidden">
+      <div class="stepper">
+        <button id="emlMinus">−</button>
+        <div class="val"><span id="emlVal">90</span> мл</div>
+        <button id="emlPlus">＋</button>
+      </div>
+    </div>
+    <div class="dtrow">
+      <input type="date" id="edDate">
+      <input type="time" id="edTime">
+    </div>
+    <button class="primaryBtn" id="saveEdit">Сохранить</button>
+    <button class="dangerBtn" id="delEv">Удалить запись</button>
+  </div>
+</div>
+
+<script type="module">
+/* ================= FIREBASE_CONFIG =================
+   Вставь сюда конфиг своего проекта Firebase
+   (Project settings → General → Your apps → SDK setup and configuration)
+==================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyB5choS-pDk0f5yKL0fUCBYSIHIyHhBmag",
+  authDomain: "babysleeptracker-for-mia.firebaseapp.com",
+  projectId: "babysleeptracker-for-mia",
+  storageBucket: "babysleeptracker-for-mia.firebasestorage.app",
+  messagingSenderId: "264032515483",
+  appId: "1:264032515483:web:c097212451e1a8c2cbdd3e"
+};
+
+const BIRTH = new Date(2026, 5, 9);      // 9 июня 2026
+const NIGHT_START = 20, NIGHT_END = 8;   // граница ночи для аналитики
+
+if (firebaseConfig.apiKey.startsWith("ВСТАВЬ")) {
+  document.getElementById('cfgWarn').classList.remove('hidden');
+  throw new Error("no firebase config");
+}
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, limit, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const fmtTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+const fmtDur = ms => {
+  const m = Math.round(ms / 60000), h = Math.floor(m / 60);
+  return h > 0 ? `${h} ч ${pad(m % 60)} мин` : `${m % 60} мин`;
+};
+const plural = (n, one, few, many) => {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+};
+function ageStr() {
+  const days = Math.floor((Date.now() - BIRTH.getTime()) / 86400000);
+  if (days < 0) return '';
+  if (days < 98) {
+    const w = Math.floor(days / 7), d = days % 7;
+    let s = w > 0 ? `${w} нед` : '';
+    if (d > 0) s += (s ? ' ' : '') + `${d} ${plural(d,'день','дня','дней')}`;
+    return s || 'родилась сегодня 💜';
+  }
+  const mo = Math.floor(days / 30.44);
+  return `${mo} мес`;
+}
+const dayLabel = dk => {
+  const today = dayKey(Date.now());
+  const yest = dayKey(Date.now() - 86400000);
+  const d = new Date(dk + 'T12:00');
+  const s = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
+  if (dk === today) return `Сегодня, ${s}`;
+  if (dk === yest) return `Вчера, ${s}`;
+  return d.toLocaleDateString('ru-RU', {weekday:'short', day:'numeric', month:'long'});
+};
+
+/* ---------- state ---------- */
+let events = [];       // desc by t
+let todos = [];
+let checks = {};
+let author = localStorage.getItem('author');
+let curPanel = 0;
+let unsubChecks = null;
+let curDay = dayKey(Date.now());
+
+$('age').textContent = ageStr();
+
+/* ---------- setup: who are you ---------- */
+if (!author) $('setup').classList.remove('hidden');
+document.querySelectorAll('#setup .choice button').forEach(b => b.onclick = () => {
+  author = b.dataset.who;
+  localStorage.setItem('author', author);
+  $('setup').classList.add('hidden');
+});
+
+/* ---------- firestore subscriptions ---------- */
+onSnapshot(query(collection(db, 'events'), orderBy('t', 'desc'), limit(2000)), snap => {
+  events = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderAll();
+});
+
+onSnapshot(query(collection(db, 'todoItems'), orderBy('order')), snap => {
+  todos = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  if (todos.length === 0 && !localStorage.getItem('seeded')) {
+    localStorage.setItem('seeded', '1');
+    setDoc(doc(db, 'todoItems', 'seed1'), {title: 'Tummy time', order: 1});
+    setDoc(doc(db, 'todoItems', 'seed2'), {title: 'Витамин D', order: 2});
+    setDoc(doc(db, 'todoItems', 'seed3'), {title: 'Чёрно-белые карточки', order: 3});
+  }
+  renderTodos();
+});
+
+function subChecks() {
+  if (unsubChecks) unsubChecks();
+  unsubChecks = onSnapshot(doc(db, 'todoChecks', curDay), s => {
+    checks = s.data() || {};
+    renderTodos();
+  });
+}
+subChecks();
+
+setInterval(() => {
+  const dk = dayKey(Date.now());
+  if (dk !== curDay) { curDay = dk; subChecks(); renderAll(); $('age').textContent = ageStr(); }
+  renderStatus();
+}, 30000);
+
+/* ---------- status ---------- */
+function lastState() {
+  for (const e of events) {
+    if (e.type === 'sleep') return {s: 'sleep', t: e.t};
+    if (e.type === 'wake') return {s: 'awake', t: e.t};
+  }
+  return null;
+}
+function renderStatus() {
+  const card = $('statusCard');
+  const st = lastState();
+  if (!st) {
+    card.className = 'none';
+    card.innerHTML = `<div class="big">🌙</div><div class="label">Пока нет записей</div><div class="since">нажми ＋ чтобы добавить первую</div>`;
+    return;
+  }
+  const dur = fmtDur(Date.now() - st.t);
+  if (st.s === 'sleep') {
+    card.className = 'sleep';
+    card.innerHTML =
+      `<span class="star" style="top:16%;left:12%;">✦</span>
+       <span class="star" style="top:28%;right:14%;animation-delay:.9s;">✦</span>
+       <span class="star" style="bottom:20%;left:22%;animation-delay:1.6s;font-size:8px;">✦</span>
+       <span class="star" style="top:14%;right:30%;animation-delay:2.1s;font-size:8px;">✦</span>
+       <span class="zzz" style="top:34%;right:26%;">z</span>
+       <span class="zzz" style="top:30%;right:22%;animation-delay:1.1s;">z</span>
+       <span class="zzz" style="top:26%;right:30%;animation-delay:2.2s;">z</span>
+       <div class="big">🌙</div><div class="label">Мия спит</div>
+       <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>`;
+  } else {
+    card.className = 'awake';
+    card.innerHTML =
+      `<div class="big"><span id="sunwrap">☀️</span></div><div class="label">Мия бодрствует</div>
+       <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>`;
+  }
+}
+
+/* ---------- todo ---------- */
+let todoEdit = false;
+$('todoEditBtn').onclick = () => {
+  todoEdit = !todoEdit;
+  $('todoEditBtn').textContent = todoEdit ? 'готово' : 'изменить';
+  $('todoAdd').classList.toggle('hidden', !todoEdit);
+  renderTodos();
+};
+$('todoAddBtn').onclick = () => {
+  const v = $('todoInput').value.trim();
+  if (!v) return;
+  addDoc(collection(db, 'todoItems'), {title: v, order: Date.now()});
+  $('todoInput').value = '';
+};
+function renderTodos() {
+  const box = $('todoList');
+  box.innerHTML = '';
+  for (const td of todos) {
+    const done = !!checks[td.id];
+    const row = document.createElement('div');
+    row.className = 'todoRow' + (done ? ' done' : '');
+    row.innerHTML = `<div class="box">${done ? '✓' : ''}</div><div class="t"></div>` +
+      (todoEdit ? `<button class="del" aria-label="Удалить">✕</button>` : '');
+    row.querySelector('.t').textContent = td.title;
+    row.onclick = e => {
+      if (e.target.classList.contains('del')) { deleteDoc(doc(db, 'todoItems', td.id)); return; }
+      setDoc(doc(db, 'todoChecks', curDay), {[td.id]: !done}, {merge: true});
+    };
+    box.appendChild(row);
+  }
+}
+
+/* ---------- history ---------- */
+const evMeta = e => {
+  if (e.type === 'sleep') return {ico: '🌙', lbl: 'Уснула'};
+  if (e.type === 'wake') return {ico: '☀️', lbl: 'Проснулась'};
+  if (e.type === 'breast') return {ico: '🤱', lbl: 'Грудь'};
+  return {ico: '🍼', lbl: `Бутылочка · ${e.ml || '?'} мл`};
+};
+function renderHistory() {
+  const box = $('histList');
+  box.innerHTML = '';
+  if (!events.length) { box.innerHTML = '<p style="color:var(--muted);font-size:15px;">Записей пока нет.</p>'; return; }
+  let lastDk = null;
+  for (const e of events) {
+    const dk = dayKey(e.t);
+    if (dk !== lastDk) {
+      lastDk = dk;
+      const h = document.createElement('div');
+      h.className = 'dayHead';
+      h.textContent = dayLabel(dk);
+      box.appendChild(h);
+    }
+    const m = evMeta(e);
+    const row = document.createElement('div');
+    row.className = 'evRow';
+    row.innerHTML = `<div class="ico">${m.ico}</div><div class="lbl">${m.lbl}</div>
+      <div class="tm">${fmtTime(e.t)}</div><div class="who ${e.author}">${e.author === 'N' ? 'Н' : 'В'}</div>`;
+    row.onclick = () => openEdit(e);
+    box.appendChild(row);
+  }
+}
+
+/* ---------- analytics ---------- */
+function sleepIntervals() {
+  const asc = [...events].reverse().filter(e => e.type === 'sleep' || e.type === 'wake');
+  const iv = [];
+  let start = null;
+  for (const e of asc) {
+    if (e.type === 'sleep') { if (start === null) start = e.t; }
+    else { if (start !== null && e.t > start) iv.push([start, e.t]); start = null; }
+  }
+  if (start !== null) iv.push([start, Date.now()]);
+  return iv;
+}
+function overlap(a1, a2, b1, b2) { return Math.max(0, Math.min(a2, b2) - Math.max(a1, b1)); }
+function daySleep(dk, iv) {
+  const d0 = new Date(dk + 'T00:00').getTime();
+  const d1 = d0 + 86400000;
+  const nEnd = d0 + NIGHT_END * 3600000;
+  const nStart = d0 + NIGHT_START * 3600000;
+  let total = 0, night = 0;
+  for (const [s, e] of iv) {
+    total += overlap(s, e, d0, d1);
+    night += overlap(s, e, d0, nEnd) + overlap(s, e, nStart, d1);
+  }
+  return {total, night, day: total - night};
+}
+function renderStats() {
+  const iv = sleepIntervals();
+  const today = dayKey(Date.now());
+  const ds = daySleep(today, iv);
+  const feedsToday = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === today);
+  const mlToday = feedsToday.reduce((s, e) => s + (e.ml || 0), 0);
+  const sessionsToday = iv.filter(([s, e]) => dayKey(e) === today);
+  const avg = sessionsToday.length ? sessionsToday.reduce((s, [a, b]) => s + (b - a), 0) / sessionsToday.length : 0;
+  const wakeups = events.filter(e => e.type === 'wake' && dayKey(e.t) === today).length;
+
+  $('metricGrid').innerHTML = `
+    <div class="metric"><div class="k">Сон за сегодня</div><div class="v">${ds.total ? fmtDur(ds.total) : '—'}</div></div>
+    <div class="metric"><div class="k">Кормлений</div><div class="v">${feedsToday.length}${mlToday ? ' · ' + mlToday + ' мл' : ''}</div></div>
+    <div class="metric"><div class="k">Средний сон</div><div class="v">${avg ? fmtDur(avg) : '—'}</div></div>
+    <div class="metric"><div class="k">Пробуждений</div><div class="v">${wakeups}</div></div>`;
+
+  const chart = $('chart');
+  chart.innerHTML = '';
+  const days = [];
+  for (let i = 6; i >= 0; i--) days.push(dayKey(Date.now() - i * 86400000));
+  const data = days.map(dk => ({dk, ...daySleep(dk, iv)}));
+  const maxT = Math.max(...data.map(d => d.total), 3600000);
+  const H = 108;
+  for (const d of data) {
+    const col = document.createElement('div');
+    col.className = 'barcol';
+    const hN = Math.round(d.night / maxT * H);
+    const hD = Math.round(d.day / maxT * H);
+    const hrs = d.total ? (d.total / 3600000).toFixed(1).replace('.', ',').replace(',0', '') + ' ч' : '';
+    const dd = new Date(d.dk + 'T12:00');
+    col.innerHTML = `<div class="bv">${hrs}</div>
+      <div class="bn" style="height:${hN}px;${hD === 0 ? '' : 'border-radius:4px 4px 0 0;'}"></div>
+      <div class="bd" style="height:${hD}px;"></div>
+      <div class="bl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`;
+    chart.appendChild(col);
+  }
+}
+
+function renderAll() { renderStatus(); renderHistory(); renderStats(); }
+
+/* ---------- panels: tabs + swipe ---------- */
+const panels = $('panels');
+function setPanel(i, animate = true) {
+  curPanel = Math.max(0, Math.min(2, i));
+  panels.style.transition = animate ? 'transform .3s cubic-bezier(.3,1,.4,1)' : 'none';
+  panels.style.transform = `translateX(${-curPanel * (100 / 3)}%)`;
+  [0, 1, 2].forEach(n => $('tab' + n).classList.toggle('on', n === curPanel));
+  $('fab').classList.toggle('hiddenFab', curPanel !== 0);
+}
+[0, 1, 2].forEach(n => $('tab' + n).onclick = () => setPanel(n));
+
+let sx = 0, sy = 0, dx = 0, lock = null;
+panels.addEventListener('touchstart', e => {
+  sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; lock = null;
+}, {passive: true});
+panels.addEventListener('touchmove', e => {
+  const x = e.touches[0].clientX - sx, y = e.touches[0].clientY - sy;
+  if (lock === null && (Math.abs(x) > 8 || Math.abs(y) > 8)) lock = Math.abs(x) > Math.abs(y) ? 'h' : 'v';
+  if (lock === 'h') {
+    e.preventDefault();
+    dx = x;
+    if ((curPanel === 0 && dx > 0) || (curPanel === 2 && dx < 0)) dx = dx / 3;
+    panels.style.transition = 'none';
+    panels.style.transform = `translateX(calc(${-curPanel * (100 / 3)}% + ${dx}px))`;
+  }
+}, {passive: false});
+panels.addEventListener('touchend', () => {
+  if (lock !== 'h') return;
+  if (dx < -55) setPanel(curPanel + 1);
+  else if (dx > 55) setPanel(curPanel - 1);
+  else setPanel(curPanel);
+});
+setPanel(0, false);
+
+/* ---------- add sheet ---------- */
+let selType = null, selFeed = null, ml = 90;
+const mlShow = () => { $('mlVal').textContent = ml; };
+function resetSheet() {
+  selType = null; selFeed = null; ml = 90; mlShow();
+  document.querySelectorAll('#addWrap .typegrid button, #addWrap .seg button, #addWrap .presets button').forEach(b => b.classList.remove('sel'));
+  $('feedBlock').classList.add('hidden');
+  $('mlBlock').classList.add('hidden');
+  $('saveEv').disabled = true;
+  const now = new Date();
+  $('evDate').value = dayKey(now);
+  $('evTime').value = pad(now.getHours()) + ':' + pad(now.getMinutes());
+}
+function validSheet() {
+  $('saveEv').disabled = !(selType === 'sleep' || selType === 'wake' || (selType === 'feed' && selFeed));
+}
+$('fab').onclick = () => { resetSheet(); $('addWrap').classList.remove('hiddenS'); };
+document.querySelectorAll('.overlay').forEach(o => o.onclick = () => o.parentElement.classList.add('hiddenS'));
+
+document.querySelectorAll('#addWrap .typegrid button').forEach(b => b.onclick = () => {
+  selType = b.dataset.t;
+  document.querySelectorAll('#addWrap .typegrid button').forEach(x => x.classList.toggle('sel', x === b));
+  $('feedBlock').classList.toggle('hidden', selType !== 'feed');
+  if (selType !== 'feed') { selFeed = null; document.querySelectorAll('#addWrap .seg button').forEach(x => x.classList.remove('sel')); $('mlBlock').classList.add('hidden'); }
+  validSheet();
+});
+document.querySelectorAll('#addWrap .seg button').forEach(b => b.onclick = () => {
+  selFeed = b.dataset.f;
+  document.querySelectorAll('#addWrap .seg button').forEach(x => x.classList.toggle('sel', x === b));
+  $('mlBlock').classList.toggle('hidden', selFeed !== 'bottle');
+  validSheet();
+});
+document.querySelectorAll('#addWrap .presets button').forEach(b => b.onclick = () => {
+  ml = +b.dataset.ml; mlShow();
+  document.querySelectorAll('#addWrap .presets button').forEach(x => x.classList.toggle('sel', x === b));
+});
+$('mlMinus').onclick = () => { ml = Math.max(10, ml - 10); mlShow(); };
+$('mlPlus').onclick = () => { ml = Math.min(400, ml + 10); mlShow(); };
+
+$('saveEv').onclick = async () => {
+  const t = new Date($('evDate').value + 'T' + $('evTime').value).getTime();
+  if (isNaN(t)) return;
+  const type = selType === 'feed' ? selFeed : selType;
+  const data = {type, t, author, ml: type === 'bottle' ? ml : null};
+  $('saveEv').disabled = true;
+  await addDoc(collection(db, 'events'), data);
+  $('addWrap').classList.add('hiddenS');
+};
+
+/* ---------- edit sheet ---------- */
+let editEv = null, eml = 90;
+function openEdit(e) {
+  editEv = e;
+  const m = evMeta(e);
+  $('editTitle').textContent = m.ico + ' ' + (e.type === 'bottle' ? 'Бутылочка' : m.lbl);
+  $('editMlBlock').classList.toggle('hidden', e.type !== 'bottle');
+  eml = e.ml || 90;
+  $('emlVal').textContent = eml;
+  const d = new Date(e.t);
+  $('edDate').value = dayKey(e.t);
+  $('edTime').value = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  $('editWrap').classList.remove('hiddenS');
+}
+$('emlMinus').onclick = () => { eml = Math.max(10, eml - 10); $('emlVal').textContent = eml; };
+$('emlPlus').onclick = () => { eml = Math.min(400, eml + 10); $('emlVal').textContent = eml; };
+$('saveEdit').onclick = async () => {
+  const t = new Date($('edDate').value + 'T' + $('edTime').value).getTime();
+  if (isNaN(t) || !editEv) return;
+  const upd = {t};
+  if (editEv.type === 'bottle') upd.ml = eml;
+  await updateDoc(doc(db, 'events', editEv.id), upd);
+  $('editWrap').classList.add('hiddenS');
+};
+$('delEv').onclick = async () => {
+  if (!editEv) return;
+  if (!confirm('Удалить эту запись?')) return;
+  await deleteDoc(doc(db, 'events', editEv.id));
+  $('editWrap').classList.add('hiddenS');
+};
+</script>
+</body>
+</html>
