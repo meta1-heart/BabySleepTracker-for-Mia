@@ -61,12 +61,12 @@ main{flex:1; overflow:hidden; position:relative;}
 #statusCard .big{font-size:44px; line-height:1;}
 #statusCard .label{font-size:20px; font-weight:700; margin-top:8px;}
 #statusCard .since{font-size:14px; opacity:.85; margin-top:4px; font-variant-numeric:tabular-nums;}
-#feedCard{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:13px 14px; margin-top:10px;}
-#feedCard .ico{font-size:22px;}
-#feedCard .main{flex:1;}
-#feedCard .k{font-size:12px; color:var(--muted);}
-#feedCard .v{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums;}
-#feedCard .d{font-size:13px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums;}
+#feedCard, #sleepCard{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:13px 14px; margin-top:10px;}
+#feedCard .ico, #sleepCard .ico{font-size:22px;}
+#feedCard .main, #sleepCard .main{flex:1;}
+#feedCard .k, #sleepCard .k{font-size:12px; color:var(--muted);}
+#feedCard .v, #sleepCard .v{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums;}
+#feedCard .d, #sleepCard .d{font-size:13px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums;}
 .star{position:absolute; color:#CDC7FF; font-size:11px; animation:twinkle 2.6s ease-in-out infinite;}
 @keyframes twinkle{0%,100%{opacity:.25}50%{opacity:1}}
 .zzz{position:absolute; font-size:14px; opacity:0; animation:floatz 3.2s linear infinite; color:#CDC7FF;}
@@ -222,6 +222,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
         <div class="label">Пока нет записей</div>
         <div class="since"></div>
       </div>
+      <div id="sleepCard" class="hidden"></div>
       <div id="feedCard" class="hidden"></div>
       <div id="todoHead">
         <h2>Дела на сегодня</h2>
@@ -454,6 +455,7 @@ function lastState() {
 function renderStatus() {
   const card = $('statusCard');
   const st = lastState();
+  renderSleepCard();
   renderFeedCard();
   if (!st) {
     card.className = 'none';
@@ -479,6 +481,20 @@ function renderStatus() {
       `<div class="big"><span id="sunwrap">☀️</span></div><div class="label">Мия бодрствует</div>
        <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>`;
   }
+}
+
+function renderSleepCard() {
+  const sc = $('sleepCard');
+  const iv = sleepIntervals();
+  const st = lastState();
+  const done = (st && st.s === 'sleep' && iv.length) ? iv.slice(0, -1) : iv; // отбрасываем текущий незавершённый сон
+  const last = done[done.length - 1];
+  if (!last) { sc.classList.add('hidden'); return; }
+  sc.classList.remove('hidden');
+  sc.innerHTML = `<div class="ico">🌙</div>
+    <div class="main"><div class="k">Последний сон</div>
+    <div class="v">${fmtDur(last[1] - last[0])}</div></div>
+    <div class="d">${fmtTime(last[0])}–${fmtTime(last[1])}</div>`;
 }
 
 function renderFeedCard() {
