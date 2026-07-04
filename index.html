@@ -116,17 +116,39 @@ main{flex:1; overflow:hidden; position:relative;}
 .who.V{background:#FBEAF0; color:#72243E;}
 
 /* --- stats --- */
+#perBar{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+#perBar button{font:inherit; font-size:14px; font-weight:600; padding:9px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--text);}
+#perBar button.on{border-color:var(--primary); background:var(--primary-soft); color:var(--primary);}
+#dayNav{display:flex; align-items:center; justify-content:space-between; margin-top:10px; margin-bottom:10px;}
+#dayNav button{font:inherit; font-size:20px; width:38px; height:38px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--text);}
+#dayNav button:disabled{opacity:.3;}
+#dLabel{font-size:15px; font-weight:600;}
 .metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
 .metric{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px;}
 .metric .k{font-size:12px; color:var(--muted);}
 .metric .v{font-size:20px; font-weight:700; margin-top:4px; font-variant-numeric:tabular-nums;}
 #chart{display:flex; align-items:flex-end; gap:8px; height:150px; margin-top:8px; padding:0 2px;}
 .barcol{flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:stretch; height:100%;}
-.barcol .bn{background:var(--primary); border-radius:4px 4px 0 0;}
-.barcol .bd{background:var(--primary-soft);}
+.barcol .bn{background:var(--primary); border-radius:4px 4px 0 0; color:var(--primary-soft);}
+.barcol .bd{background:var(--primary-soft); color:var(--primary);}
+.barcol .bn, .barcol .bd, .segS, .segA, .segBr, .segBo{display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; overflow:hidden; font-variant-numeric:tabular-nums;}
 .barcol .bl{font-size:10px; color:var(--muted); text-align:center; margin-top:5px;}
 .barcol .bv{font-size:10px; color:var(--muted); text-align:center; margin-bottom:3px; font-variant-numeric:tabular-nums;}
-.legend{display:flex; gap:14px; margin-top:10px; font-size:12px; color:var(--muted);}
+.legend{display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:10px; font-size:12px; color:var(--muted);}
+.metric .sub{font-size:11px; color:var(--muted); margin-top:3px;}
+.g7{display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;}
+.g7 .cv{font-size:10px; color:var(--muted); text-align:center; margin-bottom:3px; font-variant-numeric:tabular-nums;}
+.g7 .cl{font-size:10px; color:var(--muted); text-align:center; margin-top:5px;}
+.g7 .cell{display:flex; flex-direction:column; justify-content:flex-end; height:100%;}
+.chartWrap{position:relative;}
+.normLine{position:absolute; left:26px; right:0; border-top:1.5px dashed var(--amber); pointer-events:none; z-index:1;}
+.grid24{position:absolute; left:26px; right:0; border-top:1px solid var(--line); pointer-events:none;}
+.grid24 span{position:absolute; left:-26px; top:-5px; font-size:9px; color:var(--muted); width:20px; text-align:right;}
+.normLine span{position:absolute; right:0; top:-14px; font-size:9px; font-weight:700; color:var(--amber); background:var(--bg); padding:0 3px; border-radius:4px;}
+.segS{background:var(--primary); color:var(--primary-soft);}
+.segA{background:var(--amber-soft); color:var(--amber); border-radius:4px 4px 0 0;}
+.segBr{background:#E77FA4; color:#5C1F33;}
+.segBo{background:var(--teal); color:var(--teal-soft);}
 .legend span{display:flex; align-items:center; gap:5px;}
 .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
 
@@ -245,13 +267,48 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </section>
 
     <section class="panel" id="p2">
-      <h2>Сегодня</h2>
+      <div id="perBar">
+        <button id="perDay" class="on">День</button>
+        <button id="perWeek">Неделя</button>
+      </div>
+      <div id="dayNav">
+        <button id="dPrev" aria-label="Предыдущий день">‹</button>
+        <div id="dLabel"></div>
+        <button id="dNext" aria-label="Следующий день">›</button>
+      </div>
       <div class="metrics" id="metricGrid"></div>
-      <h2>Сон за 7 дней</h2>
+      <h2>Сон и бодрствование · 7 дней</h2>
+      <div class="g7" id="c2v" style="padding-left:26px;"></div>
+      <div class="chartWrap" style="height:120px;">
+        <div class="grid24" style="top:0;"><span>24</span></div>
+        <div class="grid24" style="top:30px;"><span>18</span></div>
+        <div class="grid24" style="top:60px;"><span>12</span></div>
+        <div class="grid24" style="top:90px;"><span>6</span></div>
+        <div class="normLine" style="top:50px;"><span>14 ч</span></div>
+        <div class="g7" id="c2b" style="height:100%; margin-left:26px;"></div>
+      </div>
+      <div class="g7" id="c2l" style="padding-left:26px;"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--primary)"></span>сон</span>
+        <span><span class="sw" style="background:var(--amber-soft)"></span>бодрствование</span>
+        <span><span style="display:inline-block;width:14px;border-top:1.5px dashed var(--amber);"></span>норма сна от 14 ч</span>
+      </div>
+
+      <h2>Ночной и дневной сон · 7 дней</h2>
       <div id="chart"></div>
       <div class="legend">
         <span><span class="sw" style="background:var(--primary)"></span><span id="nightLbl">ночь</span></span>
         <span><span class="sw" style="background:var(--primary-soft)"></span>день</span>
+      </div>
+
+      <h2>Кормления · 7 дней</h2>
+      <div class="g7" id="c3v"></div>
+      <div class="g7" id="c3b" style="height:100px;"></div>
+      <div class="g7" id="c3l"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--teal)"></span>бутылочка</span>
+        <span><span class="sw" style="background:#E77FA4"></span>грудь</span>
+        <span>цифры сверху — мл из бутылочки</span>
       </div>
     </section>
 
@@ -635,26 +692,68 @@ function daySleep(dk, iv) {
   }
   return {total, night, day: total - night};
 }
+const hrsN = ms => (ms / 3600000).toFixed(1).replace('.', ',').replace(',0', '');
+const hrsFmt = ms => hrsN(ms) + ' ч';
+const fmtN = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
+function dayMetrics(dk, iv, awIv) {
+  const feeds = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk);
+  const br = feeds.filter(e => e.type === 'breast').length;
+  const sess = iv.filter(([s, e]) => dayKey(e) === dk);
+  const aw = awIv.filter(([s, e]) => dayKey(e) === dk);
+  return {
+    sleep: daySleep(dk, iv).total,
+    feeds: feeds.length, br, bo: feeds.length - br,
+    ml: feeds.reduce((s, e) => s + (e.ml || 0), 0),
+    avg: sess.length ? sess.reduce((s, [a, b]) => s + (b - a), 0) / sess.length : 0,
+    longest: sess.length ? Math.max(...sess.map(([a, b]) => b - a)) : 0,
+    avgAwake: aw.length ? aw.reduce((s, [a, b]) => s + (b - a), 0) / aw.length : 0,
+    wakeups: events.filter(e => e.type === 'wake' && dayKey(e.t) === dk).length,
+    hasData: events.some(e => dayKey(e.t) === dk)
+  };
+}
 function renderStats() {
   const iv = sleepIntervals();
+  const awIv = awakeIntervals();
   const today = dayKey(Date.now());
-  const ds = daySleep(today, iv);
-  const feedsToday = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === today);
-  const mlToday = feedsToday.reduce((s, e) => s + (e.ml || 0), 0);
-  const sessionsToday = iv.filter(([s, e]) => dayKey(e) === today);
-  const avg = sessionsToday.length ? sessionsToday.reduce((s, [a, b]) => s + (b - a), 0) / sessionsToday.length : 0;
-  const wakeups = events.filter(e => e.type === 'wake' && dayKey(e.t) === today).length;
-  const aw = awakeIntervals().filter(([s, e]) => dayKey(e) === today);
-  const avgAwake = aw.length ? aw.reduce((s, [a, b]) => s + (b - a), 0) / aw.length : 0;
-  const longest = sessionsToday.length ? Math.max(...sessionsToday.map(([a, b]) => b - a)) : 0;
 
-  $('metricGrid').innerHTML = `
-    <div class="metric"><div class="k">Сон за сегодня</div><div class="v">${ds.total ? fmtDur(ds.total) : '—'}</div></div>
-    <div class="metric"><div class="k">Кормлений</div><div class="v">${feedsToday.length}${mlToday ? ' · ' + mlToday + ' мл' : ''}</div></div>
-    <div class="metric"><div class="k">Средний сон</div><div class="v">${avg ? fmtDur(avg) : '—'}</div></div>
-    <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${avgAwake ? fmtDur(avgAwake) : '—'}</div></div>
-    <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${longest ? fmtDur(longest) : '—'}</div></div>
-    <div class="metric"><div class="k">Пробуждений</div><div class="v">${wakeups}</div></div>`;
+  $('dayNav').classList.toggle('hidden', statPeriod !== 'day');
+  $('dNext').disabled = statDate >= today;
+  $('dLabel').textContent = dayLabel(statDate);
+
+  if (statPeriod === 'day') {
+    const m = dayMetrics(statDate, iv, awIv);
+    $('metricGrid').innerHTML = `
+      <div class="metric"><div class="k">Сон за день</div><div class="v">${m.sleep ? fmtDur(m.sleep) : '—'}</div></div>
+      <div class="metric"><div class="k">Кормлений</div><div class="v">${m.feeds}</div>
+        <div class="sub">🤱 ${m.br} · 🍼 ${m.bo}${m.ml ? ' · ' + m.ml + ' мл' : ''}</div></div>
+      <div class="metric"><div class="k">Средний сон</div><div class="v">${m.avg ? fmtDur(m.avg) : '—'}</div></div>
+      <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${m.avgAwake ? fmtDur(m.avgAwake) : '—'}</div></div>
+      <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${m.longest ? fmtDur(m.longest) : '—'}</div></div>
+      <div class="metric"><div class="k">Пробуждений</div><div class="v">${m.wakeups}</div></div>`;
+  } else {
+    // последние 7 дней; в средних «за сутки» сегодняшний (неполный) день не участвует
+    const wdays = [];
+    for (let i = 6; i >= 0; i--) wdays.push(dayKey(Date.now() - i * 86400000));
+    const ms = wdays.map(dk => ({dk, ...dayMetrics(dk, iv, awIv)}));
+    const full = ms.filter(m => m.dk !== today && m.hasData);
+    const avgOf = f => full.length ? full.reduce((s, m) => s + f(m), 0) / full.length : 0;
+    const avgSleep = avgOf(m => m.sleep), avgFeeds = avgOf(m => m.feeds);
+    const avgBr = avgOf(m => m.br), avgBo = avgOf(m => m.bo), avgMl = avgOf(m => m.ml);
+    const avgWake = avgOf(m => m.wakeups);
+    const sessW = iv.filter(([s, e]) => wdays.includes(dayKey(e)));
+    const avgSess = sessW.length ? sessW.reduce((s, [a, b]) => s + (b - a), 0) / sessW.length : 0;
+    const longW = sessW.length ? Math.max(...sessW.map(([a, b]) => b - a)) : 0;
+    const awW = awIv.filter(([s, e]) => wdays.includes(dayKey(e)));
+    const avgAwW = awW.length ? awW.reduce((s, [a, b]) => s + (b - a), 0) / awW.length : 0;
+    $('metricGrid').innerHTML = `
+      <div class="metric"><div class="k">Сон в сутки, ср.</div><div class="v">${avgSleep ? fmtDur(avgSleep) : '—'}</div></div>
+      <div class="metric"><div class="k">Кормлений в день, ср.</div><div class="v">${avgFeeds ? fmtN(avgFeeds) : '—'}</div>
+        <div class="sub">🤱 ${fmtN(avgBr)} · 🍼 ${fmtN(avgBo)}${avgMl ? ' · ' + Math.round(avgMl) + ' мл' : ''}</div></div>
+      <div class="metric"><div class="k">Средний сон</div><div class="v">${avgSess ? fmtDur(avgSess) : '—'}</div></div>
+      <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${avgAwW ? fmtDur(avgAwW) : '—'}</div></div>
+      <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${longW ? fmtDur(longW) : '—'}</div></div>
+      <div class="metric"><div class="k">Пробуждений в день, ср.</div><div class="v">${avgWake ? fmtN(avgWake) : '—'}</div></div>`;
+  }
 
   const chart = $('chart');
   chart.innerHTML = '';
@@ -671,12 +770,64 @@ function renderStats() {
     const hrs = d.total ? (d.total / 3600000).toFixed(1).replace('.', ',').replace(',0', '') + ' ч' : '';
     const dd = new Date(d.dk + 'T12:00');
     col.innerHTML = `<div class="bv">${hrs}</div>
-      <div class="bn" style="height:${hN}px;${hD === 0 ? '' : 'border-radius:4px 4px 0 0;'}"></div>
-      <div class="bd" style="height:${hD}px;"></div>
+      <div class="bn" style="height:${hN}px;${hD === 0 ? '' : 'border-radius:4px 4px 0 0;'}">${hN >= 13 ? hrsN(d.night) : ''}</div>
+      <div class="bd" style="height:${hD}px;">${hD >= 13 ? hrsN(d.day) : ''}</div>
       <div class="bl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`;
     chart.appendChild(col);
   }
+
+  // --- сон vs бодрствование, доля суток ---
+  const DAY = 86400000, H2 = 120;
+  const c2v = $('c2v'), c2b = $('c2b'), c2l = $('c2l');
+  c2v.innerHTML = ''; c2b.innerHTML = ''; c2l.innerHTML = '';
+  for (const d of data) {
+    const hasData = d.total > 0 || events.some(e => dayKey(e.t) === d.dk);
+    const d0 = new Date(d.dk + 'T00:00').getTime();
+    const len = Math.min(DAY, Math.max(0, Date.now() - d0));
+    const awake = Math.max(0, len - d.total);
+    const hS = Math.round(d.total / DAY * H2);
+    const hA = Math.round(awake / DAY * H2);
+    c2v.insertAdjacentHTML('beforeend', `<div class="cv">${d.total ? hrsFmt(d.total) : ''}</div>`);
+    c2b.insertAdjacentHTML('beforeend', hasData ? `<div class="cell">` +
+      (hA ? `<div class="segA" style="height:${hA}px;">${hA >= 13 ? hrsN(awake) : ''}</div>` : '') +
+      (hS ? `<div class="segS" style="height:${hS}px;${hA ? '' : 'border-radius:4px 4px 0 0;'}">${hS >= 13 ? hrsN(d.total) : ''}</div>` : '') +
+      `</div>` : `<div class="cell"></div>`);
+    const dd = new Date(d.dk + 'T12:00');
+    c2l.insertAdjacentHTML('beforeend', `<div class="cl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`);
+  }
+
+  // --- кормления: грудь vs бутылочка ---
+  const c3v = $('c3v'), c3b = $('c3b'), c3l = $('c3l');
+  c3v.innerHTML = ''; c3b.innerHTML = ''; c3l.innerHTML = '';
+  const fdata = days.map(dk => {
+    const fs = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk);
+    return {dk,
+      br: fs.filter(e => e.type === 'breast').length,
+      bo: fs.filter(e => e.type === 'bottle').length,
+      ml: fs.reduce((s, e) => s + (e.ml || 0), 0)};
+  });
+  const maxF = Math.max(...fdata.map(f => f.br + f.bo), 1);
+  const H3 = 100;
+  for (const f of fdata) {
+    const hBr = Math.round(f.br / maxF * H3);
+    const hBo = Math.round(f.bo / maxF * H3);
+    c3v.insertAdjacentHTML('beforeend', `<div class="cv">${f.ml || ''}</div>`);
+    c3b.insertAdjacentHTML('beforeend', `<div class="cell">` +
+      (f.bo ? `<div class="segBo" style="height:${hBo}px;border-radius:4px 4px 0 0;">${hBo >= 13 ? f.bo : ''}</div>` : '') +
+      (f.br ? `<div class="segBr" style="height:${hBr}px;border-radius:${f.bo ? '0' : '4px 4px 0 0'};">${hBr >= 13 ? f.br : ''}</div>` : '') +
+      `</div>`);
+    const dd = new Date(f.dk + 'T12:00');
+    c3l.insertAdjacentHTML('beforeend', `<div class="cl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`);
+  }
 }
+
+let statPeriod = 'day';
+let statDate = dayKey(Date.now());
+const shiftDay = (dk, n) => dayKey(new Date(dk + 'T12:00').getTime() + n * 86400000);
+$('perDay').onclick = () => { statPeriod = 'day'; $('perDay').classList.add('on'); $('perWeek').classList.remove('on'); renderStats(); };
+$('perWeek').onclick = () => { statPeriod = 'week'; $('perWeek').classList.add('on'); $('perDay').classList.remove('on'); renderStats(); };
+$('dPrev').onclick = () => { statDate = shiftDay(statDate, -1); renderStats(); };
+$('dNext').onclick = () => { if (statDate < dayKey(Date.now())) { statDate = shiftDay(statDate, 1); renderStats(); } };
 
 function renderAll() { renderStatus(); renderHistory(); renderStats(); }
 
