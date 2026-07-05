@@ -172,7 +172,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
 .hidden{display:none!important;}
 .handle{width:38px; height:5px; border-radius:3px; background:var(--line); margin:4px auto 14px;}
 .sheet h3{font-size:18px; font-weight:700; margin-bottom:14px;}
-.typegrid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+.typegrid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
 .typegrid button, .seg button, .presets button{
   font:inherit; font-size:15px; font-weight:600; padding:14px 6px; border-radius:14px;
   border:1.5px solid var(--line); background:var(--bg); color:var(--text);
@@ -333,6 +333,14 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
       <button data-t="sleep"><span class="e">🌙</span>Уснула</button>
       <button data-t="wake"><span class="e">☀️</span>Проснулась</button>
       <button data-t="feed"><span class="e">🍼</span>Кормление</button>
+      <button data-t="diaper"><span class="e">🧷</span>Подгузник</button>
+    </div>
+    <div id="diaperBlock" class="hidden">
+      <div class="presets">
+        <button data-d="wet">💧 Мокрый</button>
+        <button data-d="dirty">💩 Грязный</button>
+        <button data-d="both">Оба</button>
+      </div>
     </div>
     <div id="feedBlock" class="hidden">
       <div class="seg">
@@ -372,6 +380,13 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
   <div class="sheet">
     <div class="handle"></div>
     <h3 id="editTitle">Запись</h3>
+    <div id="editDiaperBlock" class="hidden">
+      <div class="presets">
+        <button data-d="wet">💧 Мокрый</button>
+        <button data-d="dirty">💩 Грязный</button>
+        <button data-d="both">Оба</button>
+      </div>
+    </div>
     <div id="editSideBlock" class="hidden">
       <div class="presets">
         <button data-s="L">Левая</button>
@@ -620,10 +635,12 @@ function renderTodos() {
 
 /* ---------- history ---------- */
 const sideName = s => s === 'L' ? 'левая' : s === 'R' ? 'правая' : 'обе';
+const dName = d => d === 'wet' ? 'мокрый' : d === 'dirty' ? 'грязный' : 'мокрый + грязный';
 const evMeta = e => {
   if (e.type === 'sleep') return {ico: '🌙', lbl: 'Уснула'};
   if (e.type === 'wake') return {ico: '☀️', lbl: 'Проснулась'};
   if (e.type === 'breast') return {ico: '🤱', lbl: 'Грудь' + (e.side ? ' · ' + sideName(e.side) : '')};
+  if (e.type === 'diaper') return {ico: '🧷', lbl: 'Подгузник · ' + dName(e.d)};
   return {ico: '🍼', lbl: `Бутылочка · ${e.ml || '?'} мл`};
 };
 function renderHistory() {
@@ -701,6 +718,10 @@ function dayMetrics(dk, iv, awIv) {
     longest: sess.length ? Math.max(...sess.map(([a, b]) => b - a)) : 0,
     avgAwake: aw.length ? aw.reduce((s, [a, b]) => s + (b - a), 0) / aw.length : 0,
     wakeups: events.filter(e => e.type === 'wake' && dayKey(e.t) === dk).length,
+    dp: (dps => ({n: dps.length,
+      wet: dps.filter(e => e.d === 'wet' || e.d === 'both').length,
+      dirty: dps.filter(e => e.d === 'dirty' || e.d === 'both').length}))(
+      events.filter(e => e.type === 'diaper' && dayKey(e.t) === dk)),
     hasData: events.some(e => dayKey(e.t) === dk)
   };
 }
@@ -722,7 +743,9 @@ function renderStats() {
       <div class="metric"><div class="k">Средний сон</div><div class="v">${m.avg ? fmtDur(m.avg) : '—'}</div></div>
       <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${m.avgAwake ? fmtDur(m.avgAwake) : '—'}</div></div>
       <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${m.longest ? fmtDur(m.longest) : '—'}</div></div>
-      <div class="metric"><div class="k">Пробуждений</div><div class="v">${m.wakeups}</div></div>`;
+      <div class="metric"><div class="k">Пробуждений</div><div class="v">${m.wakeups}</div></div>
+      <div class="metric" style="grid-column:1/-1;"><div class="k">Подгузников</div><div class="v">${m.dp.n}</div>
+        <div class="sub">💧 мокрых ${m.dp.wet} · 💩 грязных ${m.dp.dirty}</div></div>`;
   } else {
     // последние 7 дней; в средних «за сутки» сегодняшний (неполный) день не участвует
     const wdays = [];
@@ -745,7 +768,9 @@ function renderStats() {
       <div class="metric"><div class="k">Средний сон</div><div class="v">${avgSess ? fmtDur(avgSess) : '—'}</div></div>
       <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${avgAwW ? fmtDur(avgAwW) : '—'}</div></div>
       <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${longW ? fmtDur(longW) : '—'}</div></div>
-      <div class="metric"><div class="k">Пробуждений в день, ср.</div><div class="v">${avgWake ? fmtN(avgWake) : '—'}</div></div>`;
+      <div class="metric"><div class="k">Пробуждений в день, ср.</div><div class="v">${avgWake ? fmtN(avgWake) : '—'}</div></div>
+      <div class="metric" style="grid-column:1/-1;"><div class="k">Подгузников в день, ср.</div><div class="v">${fmtN(avgOf(m => m.dp.n))}</div>
+        <div class="sub">💧 мокрых ${fmtN(avgOf(m => m.dp.wet))} · 💩 грязных ${fmtN(avgOf(m => m.dp.dirty))}</div></div>`;
   }
 
   const chart = $('chart');
@@ -859,15 +884,16 @@ panels.addEventListener('touchend', () => {
 setPanel(0, false);
 
 /* ---------- add sheet ---------- */
-let selType = null, selFeed = null, selSide = null, ml = 90;
+let selType = null, selFeed = null, selSide = null, selDiaper = null, ml = 90;
 const mlShow = () => { $('mlVal').textContent = ml; };
 function resetSheet() {
-  selType = null; selFeed = null; selSide = null; ml = 90; mlShow();
+  selType = null; selFeed = null; selSide = null; selDiaper = null; ml = 90; mlShow();
   document.querySelectorAll('#addWrap .typegrid button, #addWrap .seg button, #addWrap .presets button').forEach(b => b.classList.remove('sel'));
   $('feedBlock').classList.add('hidden');
   $('mlBlock').classList.add('hidden');
   $('sideBlock').classList.add('hidden');
-  document.querySelectorAll('#sideBlock button').forEach(b => b.classList.remove('sel'));
+  $('diaperBlock').classList.add('hidden');
+  document.querySelectorAll('#sideBlock button, #diaperBlock button').forEach(b => b.classList.remove('sel'));
   $('saveEv').disabled = true;
   const now = new Date();
   $('evDate').value = dayKey(now);
@@ -875,6 +901,7 @@ function resetSheet() {
 }
 function validSheet() {
   $('saveEv').disabled = !(selType === 'sleep' || selType === 'wake' ||
+    (selType === 'diaper' && selDiaper) ||
     (selType === 'feed' && (selFeed === 'bottle' || (selFeed === 'breast' && selSide))));
 }
 $('fab').onclick = () => { resetSheet(); $('addWrap').classList.remove('hiddenS'); };
@@ -884,10 +911,15 @@ document.querySelectorAll('#addWrap .typegrid button').forEach(b => b.onclick = 
   selType = b.dataset.t;
   document.querySelectorAll('#addWrap .typegrid button').forEach(x => x.classList.toggle('sel', x === b));
   $('feedBlock').classList.toggle('hidden', selType !== 'feed');
+  $('diaperBlock').classList.toggle('hidden', selType !== 'diaper');
   if (selType !== 'feed') {
     selFeed = null; selSide = null;
     document.querySelectorAll('#addWrap .seg button, #sideBlock button').forEach(x => x.classList.remove('sel'));
     $('mlBlock').classList.add('hidden'); $('sideBlock').classList.add('hidden');
+  }
+  if (selType !== 'diaper') {
+    selDiaper = null;
+    document.querySelectorAll('#diaperBlock button').forEach(x => x.classList.remove('sel'));
   }
   validSheet();
 });
@@ -896,6 +928,11 @@ document.querySelectorAll('#addWrap .seg button').forEach(b => b.onclick = () =>
   document.querySelectorAll('#addWrap .seg button').forEach(x => x.classList.toggle('sel', x === b));
   $('mlBlock').classList.toggle('hidden', selFeed !== 'bottle');
   $('sideBlock').classList.toggle('hidden', selFeed !== 'breast');
+  validSheet();
+});
+document.querySelectorAll('#diaperBlock button').forEach(b => b.onclick = () => {
+  selDiaper = b.dataset.d;
+  document.querySelectorAll('#diaperBlock button').forEach(x => x.classList.toggle('sel', x === b));
   validSheet();
 });
 document.querySelectorAll('#sideBlock button').forEach(b => b.onclick = () => {
@@ -916,21 +953,25 @@ $('saveEv').onclick = async () => {
   const type = selType === 'feed' ? selFeed : selType;
   const data = {type, t, author, ml: type === 'bottle' ? ml : null};
   if (type === 'breast') data.side = selSide;
+  if (type === 'diaper') data.d = selDiaper;
   $('saveEv').disabled = true;
   await addDoc(collection(db, 'events'), data);
   $('addWrap').classList.add('hiddenS');
 };
 
 /* ---------- edit sheet ---------- */
-let editEv = null, eml = 90, eside = null;
+let editEv = null, eml = 90, eside = null, ediaper = null;
 function openEdit(e) {
   editEv = e;
   const m = evMeta(e);
-  $('editTitle').textContent = m.ico + ' ' + (e.type === 'bottle' ? 'Бутылочка' : e.type === 'breast' ? 'Грудь' : m.lbl);
+  $('editTitle').textContent = m.ico + ' ' + (e.type === 'bottle' ? 'Бутылочка' : e.type === 'breast' ? 'Грудь' : e.type === 'diaper' ? 'Подгузник' : m.lbl);
   $('editMlBlock').classList.toggle('hidden', e.type !== 'bottle');
   $('editSideBlock').classList.toggle('hidden', e.type !== 'breast');
+  $('editDiaperBlock').classList.toggle('hidden', e.type !== 'diaper');
   eside = e.side || null;
+  ediaper = e.d || null;
   document.querySelectorAll('#editSideBlock button').forEach(b => b.classList.toggle('sel', b.dataset.s === eside));
+  document.querySelectorAll('#editDiaperBlock button').forEach(b => b.classList.toggle('sel', b.dataset.d === ediaper));
   eml = e.ml || 90;
   $('emlVal').textContent = eml;
   const d = new Date(e.t);
@@ -938,6 +979,10 @@ function openEdit(e) {
   $('edTime').value = pad(d.getHours()) + ':' + pad(d.getMinutes());
   $('editWrap').classList.remove('hiddenS');
 }
+document.querySelectorAll('#editDiaperBlock button').forEach(b => b.onclick = () => {
+  ediaper = b.dataset.d;
+  document.querySelectorAll('#editDiaperBlock button').forEach(x => x.classList.toggle('sel', x === b));
+});
 document.querySelectorAll('#editSideBlock button').forEach(b => b.onclick = () => {
   eside = b.dataset.s;
   document.querySelectorAll('#editSideBlock button').forEach(x => x.classList.toggle('sel', x === b));
@@ -950,6 +995,7 @@ $('saveEdit').onclick = async () => {
   const upd = {t};
   if (editEv.type === 'bottle') upd.ml = eml;
   if (editEv.type === 'breast' && eside) upd.side = eside;
+  if (editEv.type === 'diaper' && ediaper) upd.d = ediaper;
   await updateDoc(doc(db, 'events', editEv.id), upd);
   $('editWrap').classList.add('hiddenS');
 };
