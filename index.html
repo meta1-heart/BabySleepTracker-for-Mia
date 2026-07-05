@@ -141,10 +141,7 @@ main{flex:1; overflow:hidden; position:relative;}
 .g7 .cl{font-size:10px; color:var(--muted); text-align:center; margin-top:5px;}
 .g7 .cell{display:flex; flex-direction:column; justify-content:flex-end; height:100%;}
 .chartWrap{position:relative;}
-.normLine{position:absolute; left:26px; right:0; border-top:1.5px dashed var(--amber); pointer-events:none; z-index:1;}
-.grid24{position:absolute; left:26px; right:0; border-top:1px solid var(--line); pointer-events:none;}
-.grid24 span{position:absolute; left:-26px; top:-5px; font-size:9px; color:var(--muted); width:20px; text-align:right;}
-.normLine span{position:absolute; right:0; top:-14px; font-size:9px; font-weight:700; color:var(--amber); background:var(--bg); padding:0 3px; border-radius:4px;}
+.normLine{position:absolute; left:0; right:0; border-top:1.5px dashed var(--amber); pointer-events:none; z-index:1;}
 .segS{background:var(--primary); color:var(--primary-soft);}
 .segA{background:var(--amber-soft); color:var(--amber); border-radius:4px 4px 0 0;}
 .segBr{background:#E77FA4; color:#5C1F33;}
@@ -278,16 +275,12 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
       </div>
       <div class="metrics" id="metricGrid"></div>
       <h2>Сон и бодрствование · 7 дней</h2>
-      <div class="g7" id="c2v" style="padding-left:26px;"></div>
+      <div class="g7" id="c2v"></div>
       <div class="chartWrap" style="height:120px;">
-        <div class="grid24" style="top:0;"><span>24</span></div>
-        <div class="grid24" style="top:30px;"><span>18</span></div>
-        <div class="grid24" style="top:60px;"><span>12</span></div>
-        <div class="grid24" style="top:90px;"><span>6</span></div>
-        <div class="normLine" style="top:50px;"><span>14 ч</span></div>
-        <div class="g7" id="c2b" style="height:100%; margin-left:26px;"></div>
+        <div class="normLine" style="top:50px;"></div>
+        <div class="g7" id="c2b" style="height:100%;"></div>
       </div>
-      <div class="g7" id="c2l" style="padding-left:26px;"></div>
+      <div class="g7" id="c2l"></div>
       <div class="legend">
         <span><span class="sw" style="background:var(--primary)"></span>сон</span>
         <span><span class="sw" style="background:var(--amber-soft)"></span>бодрствование</span>
