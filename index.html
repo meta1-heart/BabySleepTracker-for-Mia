@@ -145,10 +145,21 @@ main{flex:1; overflow:hidden; position:relative;}
 .normLine{position:absolute; left:0; right:0; border-top:1.5px dashed var(--amber); pointer-events:none; z-index:1;}
 .segS{background:var(--primary); color:var(--primary-soft);}
 .segA{background:var(--amber-soft); color:var(--amber); border-radius:4px 4px 0 0;}
-.segBr{background:#E77FA4; color:#5C1F33;}
-.segBo{background:var(--teal); color:var(--teal-soft);}
+.segBr{background:var(--teal); color:var(--teal-soft);}
+.segBo{background:#E8A13B; color:#5C3D07;}
 .legend span{display:flex; align-items:center; gap:5px;}
 .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
+
+/* --- weight --- */
+#wChart svg{width:100%; height:auto; display:block; margin-top:4px;}
+#wTable{margin-top:10px;}
+.wRow{display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:6px; font-size:14px;}
+.wRow .wd{color:var(--muted); font-size:12px; width:46px;}
+.wRow .wa{color:var(--muted); font-size:12px; flex:1;}
+.wRow .wv{font-weight:700; font-variant-numeric:tabular-nums;}
+.wRow .wn{color:var(--muted); font-size:12px; width:88px; text-align:right; font-variant-numeric:tabular-nums;}
+.wRow .out{color:var(--danger);}
+.wRow .ok{color:var(--teal);}
 
 /* --- tab bar --- */
 nav{
@@ -300,10 +311,15 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
       <div class="g7" id="c3b" style="height:100px;"></div>
       <div class="g7" id="c3l"></div>
       <div class="legend">
-        <span><span class="sw" style="background:var(--teal)"></span>бутылочка</span>
-        <span><span class="sw" style="background:#E77FA4"></span>грудь</span>
+        <span><span class="sw" style="background:#E8A13B"></span>бутылочка</span>
+        <span><span class="sw" style="background:var(--teal)"></span>грудь</span>
         <span>цифры сверху — мл из бутылочки</span>
       </div>
+
+      <h2>Вес</h2>
+      <div id="wChart"></div>
+      <div id="wTable"></div>
+      <button class="primaryBtn" id="wAddBtn" style="margin-top:4px;">＋ Добавить вес</button>
     </section>
 
   </div>
@@ -408,6 +424,20 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </div>
     <button class="primaryBtn" id="saveEdit">Сохранить</button>
     <button class="dangerBtn" id="delEv">Удалить запись</button>
+  </div>
+</div>
+
+<div id="wWrap" class="hiddenS">
+  <div class="overlay" data-close="w"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 id="wTitle">Добавить вес</h3>
+    <div class="dtrow">
+      <input type="number" id="wKg" inputmode="decimal" step="0.01" min="0" placeholder="Вес, кг">
+      <input type="date" id="wDate">
+    </div>
+    <button class="primaryBtn" id="wSave">Сохранить</button>
+    <button class="dangerBtn hidden" id="wDel">Удалить измерение</button>
   </div>
 </div>
 
@@ -1000,6 +1030,115 @@ $('saveEdit').onclick = async () => {
   await updateDoc(doc(db, 'events', editEv.id), upd);
   $('editWrap').classList.add('hiddenS');
 };
+/* ---------- weight tracker ---------- */
+// ВОЗ, девочки, вес-к-возрасту: [мес, P3, P50, P97]
+const WHO_W = [[0,2.4,3.2,4.2],[1,3.2,4.2,5.5],[2,3.9,5.1,6.6],[3,4.5,5.8,7.5],[4,5.0,6.4,8.2],[5,5.4,6.9,8.8],[6,5.7,7.3,9.3],[7,6.0,7.6,9.8],[8,6.3,7.9,10.2],[9,6.5,8.2,10.5],[10,6.7,8.5,10.9],[11,6.9,8.7,11.2],[12,7.0,8.9,11.5]];
+const MONTH_MS = 30.4375 * 86400000;
+const kgF = v => v.toFixed(2).replace('.', ',');
+const ageM = t => (t - BIRTH.getTime()) / MONTH_MS;
+function normAt(m) {
+  const x = Math.max(0, Math.min(12, m));
+  const i = Math.min(11, Math.floor(x));
+  const f = x - i, a = WHO_W[i], b = WHO_W[i + 1];
+  return {p3: a[1] + (b[1] - a[1]) * f, p50: a[2] + (b[2] - a[2]) * f, p97: a[3] + (b[3] - a[3]) * f};
+}
+const wAge = t => {
+  const days = Math.floor((t - BIRTH.getTime()) / 86400000);
+  if (days < 0) return '—';
+  if (days < 98) { const w = Math.floor(days / 7), d = days % 7; return d ? `${w} нед ${d} дн` : `${w} нед`; }
+  return fmtN(ageM(t)) + ' мес';
+};
+let weights = [];
+function renderWeights() {
+  const box = $('wChart'), tb = $('wTable');
+  const ws = [...weights].sort((a, b) => a.t - b.t);
+  tb.innerHTML = '';
+  if (!ws.length) {
+    box.innerHTML = '';
+    tb.innerHTML = '<p style="color:var(--muted);font-size:14px;">Пока нет измерений — добавь первое.</p>';
+    return;
+  }
+  for (const w of ws) {
+    const n = normAt(ageM(w.t));
+    const out = w.kg < n.p3 || w.kg > n.p97;
+    const row = document.createElement('div');
+    row.className = 'wRow';
+    row.innerHTML = `<div class="wd">${new Date(w.t).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})}</div>
+      <div class="wa">${wAge(w.t)}</div>
+      <div class="wv ${out ? 'out' : 'ok'}">${kgF(w.kg)} кг</div>
+      <div class="wn ${out ? 'out' : 'ok'}">${kgF(n.p3)}–${kgF(n.p97)}</div>`;
+    row.onclick = () => openW(w);
+    tb.appendChild(row);
+  }
+  const maxM = Math.max(ageM(Date.now()), ...ws.map(w => ageM(w.t)));
+  const Xmax = Math.min(12, Math.max(2, Math.ceil(maxM + 0.5)));
+  const W = 340, H = 200, L = 30, R = 10, T = 14, B = 22;
+  let ymin = Infinity, ymax = -Infinity;
+  for (let m = 0; m <= Xmax; m += 0.5) { const n = normAt(m); ymin = Math.min(ymin, n.p3); ymax = Math.max(ymax, n.p97); }
+  for (const w of ws) { ymin = Math.min(ymin, w.kg); ymax = Math.max(ymax, w.kg); }
+  ymin = Math.max(0, Math.floor((ymin - 0.3) * 2) / 2); ymax = Math.ceil((ymax + 0.3) * 2) / 2;
+  const xs = m => L + m / Xmax * (W - L - R);
+  const ys = v => T + (1 - (v - ymin) / (ymax - ymin)) * (H - T - B);
+  const up = [], dn = [], md = [];
+  for (let m = 0; m <= Xmax + 0.001; m += 0.25) {
+    const n = normAt(m);
+    up.push(`${xs(m).toFixed(1)},${ys(n.p97).toFixed(1)}`);
+    dn.unshift(`${xs(m).toFixed(1)},${ys(n.p3).toFixed(1)}`);
+    md.push(`${xs(m).toFixed(1)},${ys(n.p50).toFixed(1)}`);
+  }
+  let grid = '';
+  for (let v = Math.ceil(ymin); v <= Math.floor(ymax); v++)
+    grid += `<line x1="${L}" y1="${ys(v).toFixed(1)}" x2="${W - R}" y2="${ys(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${L - 5}" y="${(ys(v) + 3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="end">${v}</text>`;
+  let xt = '';
+  for (let m = 0; m <= Xmax; m++)
+    xt += `<text x="${xs(m).toFixed(1)}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="middle">${m}м</text>`;
+  const pts = ws.map(w => [xs(Math.min(ageM(w.t), Xmax)), ys(w.kg), w.kg]);
+  const line = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--primary)"/>
+    <text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" font-weight="700" fill="var(--text)" text-anchor="middle">${kgF(p[2])}</text>`).join('');
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${grid}
+    <polygon points="${up.join(' ')} ${dn.join(' ')}" fill="var(--primary)" opacity="0.12"/>
+    <polyline points="${md.join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+    ${pts.length > 1 ? `<polyline points="${line}" fill="none" stroke="var(--primary)" stroke-width="2"/>` : ''}
+    ${dots}${xt}
+  </svg>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--primary);opacity:.25"></span>норма ВОЗ P3–P97, девочки</span>
+    <span><span style="display:inline-block;width:14px;border-top:1.5px dashed var(--muted);"></span>медиана</span>
+  </div>`;
+}
+let wEdit = null;
+function openW(w) {
+  wEdit = w || null;
+  $('wTitle').textContent = wEdit ? 'Изменить вес' : 'Добавить вес';
+  $('wDel').classList.toggle('hidden', !wEdit);
+  $('wKg').value = wEdit ? wEdit.kg : '';
+  $('wDate').value = dayKey(wEdit ? wEdit.t : Date.now());
+  $('wWrap').classList.remove('hiddenS');
+}
+$('wAddBtn').onclick = () => openW(null);
+$('wSave').onclick = async () => {
+  const kg = parseFloat(String($('wKg').value).replace(',', '.'));
+  const t = new Date($('wDate').value + 'T12:00').getTime();
+  if (!(kg > 0.3 && kg < 30) || isNaN(t)) return;
+  const val = {t, kg: Math.round(kg * 100) / 100, author};
+  if (wEdit) await updateDoc(doc(db, 'weights', wEdit.id), val);
+  else await addDoc(collection(db, 'weights'), val);
+  $('wWrap').classList.add('hiddenS');
+};
+$('wDel').onclick = async () => {
+  if (!wEdit) return;
+  if (!confirm('Удалить измерение?')) return;
+  await deleteDoc(doc(db, 'weights', wEdit.id));
+  $('wWrap').classList.add('hiddenS');
+};
+onSnapshot(query(collection(db, 'weights'), orderBy('t')), snap => {
+  weights = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderWeights();
+});
+
 $('delEv').onclick = async () => {
   if (!editEv) return;
   if (!confirm('Удалить эту запись?')) return;
