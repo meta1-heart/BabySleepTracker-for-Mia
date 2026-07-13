@@ -86,6 +86,8 @@ main{flex:1; overflow:hidden; position:relative;}
 .todoRow.done .t{color:var(--muted); text-decoration:line-through;}
 .todoRow .t{flex:1;}
 .todoRow .del{color:var(--danger); font-size:18px; padding:0 4px;}
+.todoRow .mv{color:var(--muted); font-size:16px; padding:0 6px;}
+.todoRow .mv.off{opacity:.25; pointer-events:none;}
 #todoHead{display:flex; align-items:baseline; justify-content:space-between;}
 #todoEditBtn{font-size:13px; color:var(--primary); font-weight:600; background:none; border:none; font-family:inherit;}
 #todoAdd{display:flex; gap:8px; margin-top:4px;}
@@ -660,19 +662,33 @@ $('todoAddBtn').onclick = () => {
 function renderTodos() {
   const box = $('todoList');
   box.innerHTML = '';
-  for (const td of todos) {
+  // в обычном режиме выполненные уходят вниз; в режиме редактирования — базовый порядок
+  const list = todoEdit ? [...todos]
+    : [...todos].sort((a, b) => ((checks[a.id] ? 1 : 0) - (checks[b.id] ? 1 : 0)) || (a.order - b.order));
+  list.forEach((td, i) => {
     const done = !!checks[td.id];
     const row = document.createElement('div');
     row.className = 'todoRow' + (done ? ' done' : '');
     row.innerHTML = `<div class="box">${done ? '✓' : ''}</div><div class="t"></div>` +
-      (todoEdit ? `<button class="del" aria-label="Удалить">✕</button>` : '');
+      (todoEdit ? `<button class="mv up${i === 0 ? ' off' : ''}" aria-label="Выше">▲</button>
+        <button class="mv dn${i === list.length - 1 ? ' off' : ''}" aria-label="Ниже">▼</button>
+        <button class="del" aria-label="Удалить">✕</button>` : '');
     row.querySelector('.t').textContent = td.title;
     row.onclick = e => {
       if (e.target.classList.contains('del')) { deleteDoc(doc(db, 'todoItems', td.id)); return; }
+      if (e.target.classList.contains('up')) { swapTodo(i, i - 1); return; }
+      if (e.target.classList.contains('dn')) { swapTodo(i, i + 1); return; }
+      if (todoEdit) return;
       setDoc(doc(db, 'todoChecks', curDay), {[td.id]: !done}, {merge: true});
     };
     box.appendChild(row);
-  }
+  });
+}
+function swapTodo(i, j) {
+  if (j < 0 || j >= todos.length) return;
+  const a = todos[i], b = todos[j];
+  updateDoc(doc(db, 'todoItems', a.id), {order: b.order});
+  updateDoc(doc(db, 'todoItems', b.id), {order: a.order});
 }
 
 /* ---------- history ---------- */
