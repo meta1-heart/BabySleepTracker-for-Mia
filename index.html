@@ -155,6 +155,14 @@ h2.tog.closed .chev{transform:rotate(-90deg);}
 .legend span{display:flex; align-items:center; gap:5px;}
 .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
 
+/* --- timeline --- */
+#tlWrap{position:relative; height:84px; margin-top:6px;}
+.tlSeg{position:absolute; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; font-variant-numeric:tabular-nums; overflow:hidden; border-radius:3px;}
+.tlSeg.a{top:0; height:27px; background:var(--amber-soft); color:var(--amber);}
+.tlSeg.s{top:27px; height:27px; background:#453C8F; color:#D9D5F7;}
+.tlFeed{position:absolute; top:27px; width:8px; height:8px; border-radius:50%; background:var(--teal); border:1.5px solid var(--bg); transform:translate(-50%,-50%); z-index:2;}
+.tlTick{position:absolute; top:64px; font-size:9px; color:var(--muted); transform:translateX(-50%);}
+
 /* --- weight --- */
 #wChart svg{width:100%; height:auto; display:block; margin-top:4px;}
 #wTable{margin-top:10px;}
@@ -291,6 +299,18 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
         <button id="dNext" aria-label="Следующий день">›</button>
       </div>
       <div class="metrics" id="metricGrid"></div>
+
+      <h2 class="tog" data-sec="secTL">Таймлайн дня<span class="chev">▾</span></h2>
+      <div class="sec" id="secTL">
+        <p id="tlDate" style="font-size:12px;color:var(--muted);margin:0;"></p>
+        <div id="tlWrap"></div>
+        <div class="legend" style="margin-top:0;">
+          <span><span class="sw" style="background:#453C8F"></span>сон</span>
+          <span><span class="sw" style="background:var(--amber-soft)"></span>бодрствование</span>
+          <span><span class="sw" style="background:var(--teal); border-radius:50%;"></span>кормление</span>
+          <span>цифры — у блоков длиннее ~часа</span>
+        </div>
+      </div>
       <h2 class="tog" data-sec="secSA">Сон и бодрствование · 7 дней<span class="chev">▾</span></h2>
       <div class="sec" id="secSA">
         <div class="g7" id="c2v"></div>
@@ -332,6 +352,13 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
         <div id="wChart"></div>
         <div id="wTable"></div>
         <button class="primaryBtn" id="wAddBtn" style="margin-top:4px;">＋ Добавить вес</button>
+      </div>
+
+      <h2 class="tog" data-sec="secH">Рост<span class="chev">▾</span></h2>
+      <div class="sec" id="secH">
+        <div id="hChart"></div>
+        <div id="hTable"></div>
+        <button class="primaryBtn" id="hAddBtn" style="margin-top:4px;">＋ Добавить рост</button>
       </div>
     </section>
 
@@ -437,6 +464,20 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </div>
     <button class="primaryBtn" id="saveEdit">Сохранить</button>
     <button class="dangerBtn" id="delEv">Удалить запись</button>
+  </div>
+</div>
+
+<div id="hWrap" class="hiddenS">
+  <div class="overlay" data-close="h"></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 id="hTitle">Добавить рост</h3>
+    <div class="dtrow">
+      <input type="number" id="hCm" inputmode="decimal" step="0.1" min="0" placeholder="Рост, см">
+      <input type="date" id="hDate">
+    </div>
+    <button class="primaryBtn" id="hSave">Сохранить</button>
+    <button class="dangerBtn hidden" id="hDel">Удалить измерение</button>
   </div>
 </div>
 
@@ -789,6 +830,7 @@ function renderStats() {
   const today = dayKey(Date.now());
 
   $('dayNav').classList.toggle('ghost', statPeriod !== 'day');
+  renderTimeline();
   $('dNext').disabled = statDate >= today;
   $('dLabel').textContent = dayLabel(statDate);
 
@@ -1146,6 +1188,48 @@ function renderWeights() {
     <span><span style="display:inline-block;width:14px;border-top:1.5px dashed var(--muted);"></span>медиана</span>
   </div>`;
 }
+const durC = ms => { const m = Math.round(ms / 60000), h = Math.floor(m / 60); return h ? `${h}:${pad(m % 60)}` : `${m}м`; };
+function renderTimeline() {
+  const dk = statDate;
+  $('tlDate').textContent = dayLabel(dk);
+  const wrap = $('tlWrap');
+  const d0 = new Date(dk + 'T00:00').getTime();
+  const dEnd = d0 + 86400000;
+  const d1 = Math.min(dEnd, Date.now());
+  if (d1 <= d0) { wrap.innerHTML = ''; return; }
+  const iv = sleepIntervals()
+    .map(([s, e]) => [Math.max(s, d0), Math.min(e, dEnd)])
+    .filter(([s, e]) => e > s)
+    .sort((a, b) => a[0] - b[0]);
+  const pct = t => (t - d0) / 86400000 * 100;
+  const segs = [];
+  let cur = d0;
+  for (const [s, e] of iv) {
+    if (s > cur) segs.push({t: 'a', s: cur, e: s});
+    segs.push({t: 's', s, e});
+    cur = Math.max(cur, e);
+  }
+  if (cur < d1) segs.push({t: 'a', s: cur, e: d1});
+  if (!iv.length && !events.some(e => dayKey(e.t) === dk)) {
+    wrap.innerHTML = '<p style="color:var(--muted);font-size:13px;padding-top:22px;">Нет записей за этот день.</p>';
+    return;
+  }
+  let bar = '';
+  for (const g of segs) {
+    const w = pct(g.e) - pct(g.s);
+    bar += `<div class="tlSeg ${g.t}" style="left:${pct(g.s).toFixed(2)}%;width:${w.toFixed(2)}%;">${w >= 4.5 ? durC(g.e - g.s) : ''}</div>`;
+  }
+  let fd = '';
+  for (const f of events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk))
+    fd += `<div class="tlFeed" style="left:${pct(f.t).toFixed(2)}%;"></div>`;
+  let ticks = '';
+  for (const h of [0, 6, 12, 18, 24]) {
+    const tr = h === 0 ? 'transform:none;' : h === 24 ? 'transform:translateX(-100%);' : '';
+    ticks += `<div class="tlTick" style="left:${h / 24 * 100}%;${tr}">${h}:00</div>`;
+  }
+  wrap.innerHTML = `${bar}${fd}${ticks}`;
+}
+
 let wEdit = null;
 function openW(w) {
   wEdit = w || null;
@@ -1174,6 +1258,108 @@ $('wDel').onclick = async () => {
 onSnapshot(query(collection(db, 'weights'), orderBy('t')), snap => {
   weights = snap.docs.map(d => ({id: d.id, ...d.data()}));
   renderWeights();
+});
+
+/* ---------- height tracker ---------- */
+// ВОЗ, девочки, длина-к-возрасту: [мес, P3, P50, P97]
+const WHO_H = [[0,45.6,49.1,52.7],[1,50.0,53.7,57.4],[2,53.2,57.1,60.9],[3,55.8,59.8,63.8],[4,58.0,62.1,66.2],[5,59.9,64.0,68.2],[6,61.5,65.7,70.0],[7,62.9,67.3,71.6],[8,64.3,68.7,73.2],[9,65.6,70.1,74.7],[10,66.8,71.5,76.1],[11,68.0,72.8,77.5],[12,69.2,74.0,78.9]];
+const cmF = v => v.toFixed(1).replace('.', ',');
+function normAtH(m) {
+  const x = Math.max(0, Math.min(12, m));
+  const i = Math.min(11, Math.floor(x));
+  const f = x - i, a = WHO_H[i], b = WHO_H[i + 1];
+  return {p3: a[1] + (b[1] - a[1]) * f, p50: a[2] + (b[2] - a[2]) * f, p97: a[3] + (b[3] - a[3]) * f};
+}
+let heights = [];
+function renderHeights() {
+  const box = $('hChart'), tb = $('hTable');
+  const hs = [...heights].sort((a, b) => a.t - b.t);
+  tb.innerHTML = '';
+  if (!hs.length) {
+    box.innerHTML = '';
+    tb.innerHTML = '<p style="color:var(--muted);font-size:14px;">Пока нет измерений — добавь первое.</p>';
+    return;
+  }
+  for (const w of hs) {
+    const n = normAtH(ageM(w.t));
+    const out = w.cm < n.p3 || w.cm > n.p97;
+    const row = document.createElement('div');
+    row.className = 'wRow';
+    row.innerHTML = `<div class="wd">${new Date(w.t).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})}</div>
+      <div class="wa">${wAge(w.t)}</div>
+      <div class="wv ${out ? 'out' : 'ok'}">${cmF(w.cm)} см</div>
+      <div class="wn ${out ? 'out' : 'ok'}">${cmF(n.p3)}–${cmF(n.p97)}</div>`;
+    row.onclick = () => openH(w);
+    tb.appendChild(row);
+  }
+  const maxM = Math.max(ageM(Date.now()), ...hs.map(w => ageM(w.t)));
+  const Xmax = Math.min(12, Math.max(2, Math.ceil(maxM + 0.5)));
+  const W = 340, H = 200, L = 30, R = 10, T = 14, B = 22;
+  let ymin = Infinity, ymax = -Infinity;
+  for (let m = 0; m <= Xmax; m += 0.5) { const n = normAtH(m); ymin = Math.min(ymin, n.p3); ymax = Math.max(ymax, n.p97); }
+  for (const w of hs) { ymin = Math.min(ymin, w.cm); ymax = Math.max(ymax, w.cm); }
+  ymin = Math.floor(ymin - 1); ymax = Math.ceil(ymax + 1);
+  const xs = m => L + m / Xmax * (W - L - R);
+  const ys = v => T + (1 - (v - ymin) / (ymax - ymin)) * (H - T - B);
+  const up = [], dn = [], md = [];
+  for (let m = 0; m <= Xmax + 0.001; m += 0.25) {
+    const n = normAtH(m);
+    up.push(`${xs(m).toFixed(1)},${ys(n.p97).toFixed(1)}`);
+    dn.unshift(`${xs(m).toFixed(1)},${ys(n.p3).toFixed(1)}`);
+    md.push(`${xs(m).toFixed(1)},${ys(n.p50).toFixed(1)}`);
+  }
+  let grid = '';
+  const step = (ymax - ymin) > 18 ? 10 : 5;
+  for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step)
+    grid += `<line x1="${L}" y1="${ys(v).toFixed(1)}" x2="${W - R}" y2="${ys(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+      <text x="${L - 5}" y="${(ys(v) + 3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="end">${v}</text>`;
+  let xt = '';
+  for (let m = 0; m <= Xmax; m++)
+    xt += `<text x="${xs(m).toFixed(1)}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="middle">${m}м</text>`;
+  const pts = hs.map(w => [xs(Math.min(ageM(w.t), Xmax)), ys(w.cm), w.cm]);
+  const line = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--teal)"/>
+    <text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" font-weight="700" fill="var(--text)" text-anchor="middle">${cmF(p[2])}</text>`).join('');
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${grid}
+    <polygon points="${up.join(' ')} ${dn.join(' ')}" fill="var(--teal)" opacity="0.12"/>
+    <polyline points="${md.join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+    ${pts.length > 1 ? `<polyline points="${line}" fill="none" stroke="var(--teal)" stroke-width="2"/>` : ''}
+    ${dots}${xt}
+  </svg>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--teal);opacity:.25"></span>норма ВОЗ P3–P97, девочки</span>
+    <span><span style="display:inline-block;width:14px;border-top:1.5px dashed var(--muted);"></span>медиана</span>
+  </div>`;
+}
+let hEdit = null;
+function openH(w) {
+  hEdit = w || null;
+  $('hTitle').textContent = hEdit ? 'Изменить рост' : 'Добавить рост';
+  $('hDel').classList.toggle('hidden', !hEdit);
+  $('hCm').value = hEdit ? hEdit.cm : '';
+  $('hDate').value = dayKey(hEdit ? hEdit.t : Date.now());
+  $('hWrap').classList.remove('hiddenS');
+}
+$('hAddBtn').onclick = () => openH(null);
+$('hSave').onclick = async () => {
+  const cm = parseFloat(String($('hCm').value).replace(',', '.'));
+  const t = new Date($('hDate').value + 'T12:00').getTime();
+  if (!(cm > 30 && cm < 120) || isNaN(t)) return;
+  const val = {t, cm: Math.round(cm * 10) / 10, author};
+  if (hEdit) await updateDoc(doc(db, 'heights', hEdit.id), val);
+  else await addDoc(collection(db, 'heights'), val);
+  $('hWrap').classList.add('hiddenS');
+};
+$('hDel').onclick = async () => {
+  if (!hEdit) return;
+  if (!confirm('Удалить измерение?')) return;
+  await deleteDoc(doc(db, 'heights', hEdit.id));
+  $('hWrap').classList.add('hiddenS');
+};
+onSnapshot(query(collection(db, 'heights'), orderBy('t')), snap => {
+  heights = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderHeights();
 });
 
 $('delEv').onclick = async () => {
