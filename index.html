@@ -50,7 +50,7 @@ header h1{font-size:26px; font-weight:700;}
 header .age{font-size:14px; color:var(--muted); font-weight:500;}
 main{flex:1; overflow:hidden; position:relative;}
 #panels{display:flex; width:300%; height:100%; will-change:transform;}
-.panel{width:33.3333%; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:6px 20px 120px;}
+.panel{width:33.3333%; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:6px 20px 150px;}
 .panel h2{font-size:14px; font-weight:600; color:var(--muted); margin:20px 0 10px; text-transform:none;}
 
 /* --- status card --- */
@@ -105,6 +105,7 @@ main{flex:1; overflow:hidden; position:relative;}
 }
 #fab.hiddenFab{opacity:0; pointer-events:none; transform:translateX(-50%) scale(.6);}
 #fab:active{transform:translateX(-50%) scale(.92);}
+#fab::before{content:''; position:absolute; inset:-16px; border-radius:50%;}
 
 /* --- history --- */
 .dayHead{font-size:13px; font-weight:600; color:var(--muted); margin:18px 0 8px;}
