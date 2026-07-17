@@ -96,18 +96,16 @@ main{flex:1; overflow:hidden; position:relative;}
 
 /* --- fab --- */
 #fab{
-  position:absolute; left:50%; transform:translateX(-50%);
-  bottom:calc(18px + env(safe-area-inset-bottom));
-  width:64px; height:64px; border-radius:50%; border:none;
-  background:var(--primary); color:#fff; font-size:34px; line-height:1;
+  position:absolute; left:20px; right:20px;
+  bottom:calc(14px + env(safe-area-inset-bottom));
+  height:54px; border-radius:16px; border:none;
+  background:var(--primary); color:#fff; font:inherit; font-size:17px; font-weight:700;
   box-shadow:0 6px 18px rgba(84,74,183,.35);
   transition:opacity .25s, transform .25s; z-index:5;
 }
-#fab.hiddenFab{opacity:0; pointer-events:none; transform:translateX(-50%) scale(.6);}
-#fab:active{transform:translateX(-50%) scale(.92);}
-#fab::before{content:''; position:absolute; inset:-16px; border-radius:50%;}
-#fabGuard{position:absolute; left:0; right:0; bottom:0; height:calc(104px + env(safe-area-inset-bottom)); z-index:4;}
-#fabGuard.hiddenFab{display:none;}
+#fab.hiddenFab{opacity:0; pointer-events:none; transform:translateY(12px) scale(.97);}
+#fab:active{transform:scale(.98);}
+#fab::before{content:''; position:absolute; inset:-10px;}
 
 /* --- history --- */
 .dayHead{font-size:13px; font-weight:600; color:var(--muted); margin:18px 0 8px;}
@@ -371,8 +369,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </section>
 
   </div>
-  <div id="fabGuard"></div>
-  <button id="fab" aria-label="Добавить запись">＋</button>
+  <button id="fab" aria-label="Добавить запись">＋ Добавить запись</button>
 </main>
 
 <nav>
@@ -993,7 +990,6 @@ function setPanel(i, animate = true) {
   panels.style.transform = `translateX(${-curPanel * (100 / 3)}%)`;
   [0, 1, 2].forEach(n => $('tab' + n).classList.toggle('on', n === curPanel));
   $('fab').classList.toggle('hiddenFab', curPanel !== 0);
-  $('fabGuard').classList.toggle('hiddenFab', curPanel !== 0);
 }
 [0, 1, 2].forEach(n => $('tab' + n).onclick = () => setPanel(n));
 
