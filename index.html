@@ -106,6 +106,8 @@ main{flex:1; overflow:hidden; position:relative;}
 #fab.hiddenFab{opacity:0; pointer-events:none; transform:translateX(-50%) scale(.6);}
 #fab:active{transform:translateX(-50%) scale(.92);}
 #fab::before{content:''; position:absolute; inset:-16px; border-radius:50%;}
+#fabGuard{position:absolute; left:0; right:0; bottom:0; height:calc(104px + env(safe-area-inset-bottom)); z-index:4;}
+#fabGuard.hiddenFab{display:none;}
 
 /* --- history --- */
 .dayHead{font-size:13px; font-weight:600; color:var(--muted); margin:18px 0 8px;}
@@ -369,6 +371,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </section>
 
   </div>
+  <div id="fabGuard"></div>
   <button id="fab" aria-label="Добавить запись">＋</button>
 </main>
 
@@ -990,6 +993,7 @@ function setPanel(i, animate = true) {
   panels.style.transform = `translateX(${-curPanel * (100 / 3)}%)`;
   [0, 1, 2].forEach(n => $('tab' + n).classList.toggle('on', n === curPanel));
   $('fab').classList.toggle('hiddenFab', curPanel !== 0);
+  $('fabGuard').classList.toggle('hiddenFab', curPanel !== 0);
 }
 [0, 1, 2].forEach(n => $('tab' + n).onclick = () => setPanel(n));
 
