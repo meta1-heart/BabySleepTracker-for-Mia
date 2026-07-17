@@ -162,6 +162,7 @@ h2.tog.closed .chev{transform:rotate(-90deg);}
 .tlSeg.s{top:27px; height:27px; background:#453C8F; color:#D9D5F7;}
 .tlFeed{position:absolute; top:27px; width:8px; height:8px; border-radius:50%; background:var(--teal); border:1.5px solid var(--bg); transform:translate(-50%,-50%); z-index:2;}
 .tlTick{position:absolute; top:64px; font-size:9px; color:var(--muted); transform:translateX(-50%);}
+.tly{letter-spacing:1px; font-size:10px;}
 
 /* --- weight --- */
 #wChart svg{width:100%; height:auto; display:block; margin-top:4px;}
@@ -312,7 +313,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
           <span><span class="sw" style="background:#453C8F"></span>сон</span>
           <span><span class="sw" style="background:var(--amber-soft)"></span>бодрствование</span>
           <span><span class="sw" style="background:var(--teal); border-radius:50%;"></span>кормление</span>
-          <span>цифры — у блоков длиннее ~часа</span>
+          <span>короткие блоки: ı = 15 мин</span>
         </div>
       </div>
       <h2 class="tog" data-sec="secSA">Сон и бодрствование · 7 дней<span class="chev">▾</span></h2>
@@ -1238,7 +1239,13 @@ function renderTimeline() {
   let bar = '';
   for (const g of segs) {
     const w = pct(g.e) - pct(g.s);
-    bar += `<div class="tlSeg ${g.t}" style="left:${pct(g.s).toFixed(2)}%;width:${w.toFixed(2)}%;">${w >= 4.5 ? durC(g.e - g.s) : ''}</div>`;
+    let lbl = '';
+    if (w >= 4.5) lbl = durC(g.e - g.s);
+    else if (w >= 0.9) {
+      const q = Math.min(4, Math.max(1, Math.round((g.e - g.s) / 900000)));
+      lbl = `<span class="tly">${'ı'.repeat(q)}</span>`;
+    }
+    bar += `<div class="tlSeg ${g.t}" style="left:${pct(g.s).toFixed(2)}%;width:${w.toFixed(2)}%;">${lbl}</div>`;
   }
   let fd = '';
   for (const f of events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk))
