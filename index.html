@@ -118,7 +118,7 @@ main{flex:1; overflow:hidden; position:relative;}
 .who.V{background:#FBEAF0; color:#72243E;}
 
 /* --- stats --- */
-#perBar{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+#perBar{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;}
 #perBar button{font:inherit; font-size:14px; font-weight:600; padding:9px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--text);}
 #perBar button.on{border-color:var(--primary); background:var(--primary-soft); color:var(--primary);}
 #dayNav{display:flex; align-items:center; justify-content:space-between; margin-top:10px; margin-bottom:10px;}
@@ -292,10 +292,14 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
       <div id="perBar">
         <button id="perDay" class="on">День</button>
         <button id="perWeek">Неделя</button>
+        <button id="perMonth">Месяц</button>
       </div>
       <div id="dayNav">
         <button id="dPrev" aria-label="Предыдущий день">‹</button>
-        <div id="dLabel"></div>
+        <div style="position:relative;">
+          <div id="dLabel"></div>
+          <input type="date" id="dPick" aria-label="Выбрать день" style="position:absolute; inset:0; width:100%; height:100%; opacity:0;">
+        </div>
         <button id="dNext" aria-label="Следующий день">›</button>
       </div>
       <div class="metrics" id="metricGrid"></div>
@@ -833,6 +837,8 @@ function renderStats() {
   renderTimeline();
   $('dNext').disabled = statDate >= today;
   $('dLabel').textContent = dayLabel(statDate);
+  $('dPick').value = statDate;
+  $('dPick').max = dayKey(Date.now());
 
   if (statPeriod === 'day') {
     const m = dayMetrics(statDate, iv, awIv);
@@ -847,9 +853,10 @@ function renderStats() {
       <div class="metric" style="grid-column:1/-1;"><div class="k">Подгузников</div><div class="v">${m.dp.n}</div>
         <div class="sub">💧 мокрых ${m.dp.wet} · 💩 грязных ${m.dp.dirty}</div></div>`;
   } else {
-    // последние 7 дней; в средних «за сутки» сегодняшний (неполный) день не участвует
+    // последние 7 или 30 дней; сегодняшний (неполный) день и дни без записей в средних не участвуют
+    const N = statPeriod === 'week' ? 7 : 30;
     const wdays = [];
-    for (let i = 6; i >= 0; i--) wdays.push(dayKey(Date.now() - i * 86400000));
+    for (let i = N - 1; i >= 0; i--) wdays.push(dayKey(Date.now() - i * 86400000));
     const ms = wdays.map(dk => ({dk, ...dayMetrics(dk, iv, awIv)}));
     const full = ms.filter(m => m.dk !== today && m.hasData);
     const avgOf = f => full.length ? full.reduce((s, m) => s + f(m), 0) / full.length : 0;
@@ -942,8 +949,22 @@ function renderStats() {
 let statPeriod = 'day';
 let statDate = dayKey(Date.now());
 const shiftDay = (dk, n) => dayKey(new Date(dk + 'T12:00').getTime() + n * 86400000);
-$('perDay').onclick = () => { statPeriod = 'day'; $('perDay').classList.add('on'); $('perWeek').classList.remove('on'); renderStats(); };
-$('perWeek').onclick = () => { statPeriod = 'week'; $('perWeek').classList.add('on'); $('perDay').classList.remove('on'); renderStats(); };
+function setPeriod(p) {
+  statPeriod = p;
+  $('perDay').classList.toggle('on', p === 'day');
+  $('perWeek').classList.toggle('on', p === 'week');
+  $('perMonth').classList.toggle('on', p === 'month');
+  renderStats();
+}
+$('perDay').onclick = () => setPeriod('day');
+$('perWeek').onclick = () => setPeriod('week');
+$('perMonth').onclick = () => setPeriod('month');
+$('dPick').onchange = () => {
+  const v = $('dPick').value;
+  if (!v) return;
+  statDate = v > dayKey(Date.now()) ? dayKey(Date.now()) : v;
+  renderStats();
+};
 $('dPrev').onclick = () => { statDate = shiftDay(statDate, -1); renderStats(); };
 $('dNext').onclick = () => { if (statDate < dayKey(Date.now())) { statDate = shiftDay(statDate, 1); renderStats(); } };
 
