@@ -317,7 +317,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
           <span>короткие блоки: ı = 15 мин</span>
         </div>
       </div>
-      <h2 class="tog" data-sec="secSA">Сон и бодрствование · 7 дней<span class="chev">▾</span></h2>
+      <h2 class="tog" data-sec="secSA"><span>Сон и бодрствование · <span class="perSuf">7 дней</span></span><span class="chev">▾</span></h2>
       <div class="sec" id="secSA">
         <div class="g7" id="c2v"></div>
         <div class="chartWrap" style="height:120px;">
@@ -332,7 +332,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
         </div>
       </div>
 
-      <h2 class="tog" data-sec="secFeed">Кормления · 7 дней<span class="chev">▾</span></h2>
+      <h2 class="tog" data-sec="secFeed"><span>Кормления · <span class="perSuf">7 дней</span></span><span class="chev">▾</span></h2>
       <div class="sec" id="secFeed">
         <div class="g7" id="c3v"></div>
         <div class="g7" id="c3b" style="height:100px;"></div>
@@ -344,7 +344,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
         </div>
       </div>
 
-      <h2 class="tog" data-sec="secND">Ночной и дневной сон · 7 дней<span class="chev">▾</span></h2>
+      <h2 class="tog" data-sec="secND"><span>Ночной и дневной сон · <span class="perSuf">7 дней</span></span><span class="chev">▾</span></h2>
       <div class="sec" id="secND">
         <div id="chart"></div>
         <div class="legend">
@@ -835,10 +835,14 @@ function renderStats() {
   const awIv = awakeIntervals();
   const today = dayKey(Date.now());
 
-  $('dayNav').classList.toggle('ghost', statPeriod !== 'day');
   renderTimeline();
   $('dNext').disabled = statDate >= today;
-  $('dLabel').textContent = dayLabel(statDate);
+  if (statPeriod === 'day') $('dLabel').textContent = dayLabel(statDate);
+  else {
+    const N = statPeriod === 'week' ? 7 : 28;
+    const a = new Date(shiftDay(statDate, -(N - 1)) + 'T12:00'), b = new Date(statDate + 'T12:00');
+    $('dLabel').textContent = `${pad(a.getDate())}.${pad(a.getMonth()+1)} – ${pad(b.getDate())}.${pad(b.getMonth()+1)}`;
+  }
   $('dPick').value = statDate;
   $('dPick').max = dayKey(Date.now());
 
@@ -855,10 +859,11 @@ function renderStats() {
       <div class="metric" style="grid-column:1/-1;"><div class="k">Подгузников</div><div class="v">${m.dp.n}</div>
         <div class="sub">💧 мокрых ${m.dp.wet} · 💩 грязных ${m.dp.dirty}</div></div>`;
   } else {
-    // последние 7 или 30 дней; сегодняшний (неполный) день и дни без записей в средних не участвуют
-    const N = statPeriod === 'week' ? 7 : 30;
+    // окно из 7 или 28 дней, заканчивающееся выбранной датой; сегодняшний (неполный) день и дни без записей в средних не участвуют
+    const N = statPeriod === 'week' ? 7 : 28;
+    const base = new Date(statDate + 'T12:00').getTime();
     const wdays = [];
-    for (let i = N - 1; i >= 0; i--) wdays.push(dayKey(Date.now() - i * 86400000));
+    for (let i = N - 1; i >= 0; i--) wdays.push(dayKey(base - i * 86400000));
     const ms = wdays.map(dk => ({dk, ...dayMetrics(dk, iv, awIv)}));
     const full = ms.filter(m => m.dk !== today && m.hasData);
     const avgOf = f => full.length ? full.reduce((s, m) => s + f(m), 0) / full.length : 0;
@@ -882,69 +887,101 @@ function renderStats() {
         <div class="sub">💧 мокрых ${fmtN(avgOf(m => m.dp.wet))} · 💩 грязных ${fmtN(avgOf(m => m.dp.dirty))}</div></div>`;
   }
 
+  // --- колонки графиков: 7 дней или 4 недели со средними «за сутки» ---
+  const DAY = 86400000;
+  const monthMode = statPeriod === 'month';
+  document.querySelectorAll('.perSuf').forEach(s => s.textContent = monthMode ? 'по неделям, ср. в сутки' : '7 дней');
+  const dayCol = dk => {
+    const ds = daySleep(dk, iv);
+    const fs = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk);
+    return {
+      has: ds.total > 0 || events.some(e => dayKey(e.t) === dk),
+      night: ds.night, day: ds.day, total: ds.total,
+      br: fs.filter(e => e.type === 'breast').length,
+      bo: fs.filter(e => e.type === 'bottle').length,
+      ml: fs.reduce((s, e) => s + (e.ml || 0), 0)
+    };
+  };
+  const cols = [];
+  const cbase = new Date(statDate + 'T12:00').getTime();
+  if (!monthMode) {
+    for (let i = 6; i >= 0; i--) {
+      const dk = dayKey(cbase - i * DAY);
+      const c = dayCol(dk);
+      const d0 = new Date(dk + 'T00:00').getTime();
+      const len = Math.min(DAY, Math.max(0, Date.now() - d0));
+      c.awake = Math.max(0, len - c.total);
+      const dd = new Date(dk + 'T12:00');
+      c.lbl = `${pad(dd.getDate())}.${pad(dd.getMonth()+1)}`;
+      c.cnt = v => String(v);
+      cols.push(c);
+    }
+  } else {
+    for (let w = 3; w >= 0; w--) {
+      const dks = [];
+      for (let i = 6; i >= 0; i--) dks.push(dayKey(cbase - (w * 7 + i) * DAY));
+      const valid = dks.filter(dk => dk !== today).map(dayCol).filter(x => x.has);
+      const av = f => valid.length ? valid.reduce((s, x) => s + f(x), 0) / valid.length : 0;
+      const c = {
+        has: valid.length > 0,
+        night: av(x => x.night), day: av(x => x.day), total: av(x => x.total),
+        br: av(x => x.br), bo: av(x => x.bo), ml: av(x => x.ml)
+      };
+      c.awake = c.has ? Math.max(0, DAY - c.total) : 0;
+      const a = new Date(dks[0] + 'T12:00'), b = new Date(dks[6] + 'T12:00');
+      c.lbl = `${pad(a.getDate())}.${pad(a.getMonth()+1)}–${pad(b.getDate())}.${pad(b.getMonth()+1)}`;
+      c.cnt = v => fmtN(v);
+      cols.push(c);
+    }
+  }
+  ['c2v', 'c2b', 'c2l', 'c3v', 'c3b', 'c3l'].forEach(id => $(id).style.gridTemplateColumns = `repeat(${cols.length}, 1fr)`);
+
+  // --- ночной и дневной сон ---
   const chart = $('chart');
   chart.innerHTML = '';
-  const days = [];
-  for (let i = 6; i >= 0; i--) days.push(dayKey(Date.now() - i * 86400000));
-  const data = days.map(dk => ({dk, ...daySleep(dk, iv)}));
-  const maxT = Math.max(...data.map(d => d.total), 3600000);
+  const maxT = Math.max(...cols.map(d => d.total), 3600000);
   const H = 108;
-  for (const d of data) {
+  for (const d of cols) {
     const col = document.createElement('div');
     col.className = 'barcol';
     const hN = Math.round(d.night / maxT * H);
     const hD = Math.round(d.day / maxT * H);
-    const hrs = d.total ? (d.total / 3600000).toFixed(1).replace('.', ',').replace(',0', '') + ' ч' : '';
-    const dd = new Date(d.dk + 'T12:00');
-    col.innerHTML = `<div class="bv">${hrs}</div>
+    col.innerHTML = `<div class="bv">${d.total ? hrsFmt(d.total) : ''}</div>
       <div class="bn" style="height:${hN}px;${hD === 0 ? '' : 'border-radius:4px 4px 0 0;'}">${hN >= 13 ? hrsN(d.night) : ''}</div>
       <div class="bd" style="height:${hD}px;">${hD >= 13 ? hrsN(d.day) : ''}</div>
-      <div class="bl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`;
+      <div class="bl">${d.lbl}</div>`;
     chart.appendChild(col);
   }
 
   // --- сон vs бодрствование, доля суток ---
-  const DAY = 86400000, H2 = 120;
+  const H2 = 120;
   const c2v = $('c2v'), c2b = $('c2b'), c2l = $('c2l');
   c2v.innerHTML = ''; c2b.innerHTML = ''; c2l.innerHTML = '';
-  for (const d of data) {
-    const hasData = d.total > 0 || events.some(e => dayKey(e.t) === d.dk);
-    const d0 = new Date(d.dk + 'T00:00').getTime();
-    const len = Math.min(DAY, Math.max(0, Date.now() - d0));
-    const awake = Math.max(0, len - d.total);
+  for (const d of cols) {
     const hS = Math.round(d.total / DAY * H2);
-    const hA = Math.round(awake / DAY * H2);
+    const hA = Math.round(d.awake / DAY * H2);
     c2v.insertAdjacentHTML('beforeend', `<div class="cv">${d.total ? hrsFmt(d.total) : ''}</div>`);
-    c2b.insertAdjacentHTML('beforeend', hasData ? `<div class="cell">` +
-      (hA ? `<div class="segA" style="height:${hA}px;">${hA >= 13 ? hrsN(awake) : ''}</div>` : '') +
+    c2b.insertAdjacentHTML('beforeend', d.has ? `<div class="cell">` +
+      (hA ? `<div class="segA" style="height:${hA}px;">${hA >= 13 ? hrsN(d.awake) : ''}</div>` : '') +
       (hS ? `<div class="segS" style="height:${hS}px;${hA ? '' : 'border-radius:4px 4px 0 0;'}">${hS >= 13 ? hrsN(d.total) : ''}</div>` : '') +
       `</div>` : `<div class="cell"></div>`);
-    const dd = new Date(d.dk + 'T12:00');
-    c2l.insertAdjacentHTML('beforeend', `<div class="cl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`);
+    c2l.insertAdjacentHTML('beforeend', `<div class="cl">${d.lbl}</div>`);
   }
 
   // --- кормления: грудь vs бутылочка ---
   const c3v = $('c3v'), c3b = $('c3b'), c3l = $('c3l');
   c3v.innerHTML = ''; c3b.innerHTML = ''; c3l.innerHTML = '';
-  const fdata = days.map(dk => {
-    const fs = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk);
-    return {dk,
-      br: fs.filter(e => e.type === 'breast').length,
-      bo: fs.filter(e => e.type === 'bottle').length,
-      ml: fs.reduce((s, e) => s + (e.ml || 0), 0)};
-  });
-  const maxF = Math.max(...fdata.map(f => f.br + f.bo), 1);
+  const maxF = Math.max(...cols.map(f => f.br + f.bo), 1);
   const H3 = 100;
-  for (const f of fdata) {
+  for (const f of cols) {
     const hBr = Math.round(f.br / maxF * H3);
     const hBo = Math.round(f.bo / maxF * H3);
-    c3v.insertAdjacentHTML('beforeend', `<div class="cv">${f.ml || ''}</div>`);
+    c3v.insertAdjacentHTML('beforeend', `<div class="cv">${f.ml >= 1 ? Math.round(f.ml) : ''}</div>`);
     c3b.insertAdjacentHTML('beforeend', `<div class="cell">` +
-      (f.bo ? `<div class="segBo" style="height:${hBo}px;border-radius:4px 4px 0 0;">${hBo >= 13 ? f.bo : ''}</div>` : '') +
-      (f.br ? `<div class="segBr" style="height:${hBr}px;border-radius:${f.bo ? '0' : '4px 4px 0 0'};">${hBr >= 13 ? f.br : ''}</div>` : '') +
+      (f.bo ? `<div class="segBo" style="height:${hBo}px;border-radius:4px 4px 0 0;">${hBo >= 13 ? f.cnt(f.bo) : ''}</div>` : '') +
+      (f.br ? `<div class="segBr" style="height:${hBr}px;border-radius:${f.bo ? '0' : '4px 4px 0 0'};">${hBr >= 13 ? f.cnt(f.br) : ''}</div>` : '') +
       `</div>`);
-    const dd = new Date(f.dk + 'T12:00');
-    c3l.insertAdjacentHTML('beforeend', `<div class="cl">${pad(dd.getDate())}.${pad(dd.getMonth()+1)}</div>`);
+    c3l.insertAdjacentHTML('beforeend', `<div class="cl">${f.lbl}</div>`);
   }
 }
 
@@ -967,8 +1004,16 @@ $('dPick').onchange = () => {
   statDate = v > dayKey(Date.now()) ? dayKey(Date.now()) : v;
   renderStats();
 };
-$('dPrev').onclick = () => { statDate = shiftDay(statDate, -1); renderStats(); };
-$('dNext').onclick = () => { if (statDate < dayKey(Date.now())) { statDate = shiftDay(statDate, 1); renderStats(); } };
+const navStep = () => statPeriod === 'day' ? 1 : statPeriod === 'week' ? 7 : 28;
+$('dPrev').onclick = () => { statDate = shiftDay(statDate, -navStep()); renderStats(); };
+$('dNext').onclick = () => {
+  const tdk = dayKey(Date.now());
+  if (statDate >= tdk) return;
+  let nd = shiftDay(statDate, navStep());
+  if (nd > tdk) nd = tdk;
+  statDate = nd;
+  renderStats();
+};
 
 document.querySelectorAll('h2.tog').forEach(h => {
   const sec = $(h.dataset.sec);
