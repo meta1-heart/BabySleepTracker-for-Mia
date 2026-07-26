@@ -122,10 +122,11 @@ main{flex:1; overflow:hidden; position:relative;}
 .who.V{background:#FBEAF0; color:#72243E;}
 
 /* --- stats --- */
-#perBar{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;}
+#statHead{position:sticky; top:0; z-index:6; background:var(--bg); margin:0 -20px 2px; padding:2px 20px 6px; border-bottom:1px solid var(--line);}
+#perBar{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:6px;}
 #perBar button{font:inherit; font-size:14px; font-weight:600; padding:9px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--text);}
 #perBar button.on{border-color:var(--primary); background:var(--primary-soft); color:var(--primary);}
-#dayNav{display:flex; align-items:center; justify-content:space-between; margin-top:10px; margin-bottom:10px;}
+#dayNav{display:flex; align-items:center; justify-content:space-between; margin-top:8px;}
 #dayNav button{font:inherit; font-size:20px; width:38px; height:38px; border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--text);}
 #dayNav button:disabled{opacity:.3;}
 #dayNav.ghost{visibility:hidden;}
@@ -310,6 +311,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </section>
 
     <section class="panel" id="p2">
+      <div id="statHead">
       <div id="perBar">
         <button id="perDay" class="on">День</button>
         <button id="perWeek">Неделя</button>
@@ -322,6 +324,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
           <input type="date" id="dPick" aria-label="Выбрать день" style="position:absolute; inset:0; width:100%; height:100%; opacity:0;">
         </div>
         <button id="dNext" aria-label="Следующий день">›</button>
+      </div>
       </div>
       <div class="metrics" id="metricGrid"></div>
 
