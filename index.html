@@ -111,6 +111,9 @@ main{flex:1; overflow:hidden; position:relative;}
 .dayHead{font-size:13px; font-weight:600; color:var(--muted); margin:18px 0 8px;}
 .evRow{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:6px;}
 .evRow .ico{font-size:20px; width:28px; text-align:center;}
+.evRow.tdEv{border-style:dashed; background:transparent;}
+.evRow.tdEv .lbl{font-size:15px;}
+.evRow .sfx{font-size:12px; color:var(--muted);}
 .evRow .lbl{flex:1; font-size:16px;}
 .evRow .sub{font-size:12px; color:var(--muted);}
 .evRow .tm{font-size:14px; color:var(--muted); font-variant-numeric:tabular-nums;}
@@ -155,6 +158,22 @@ h2.tog.closed .chev{transform:rotate(-90deg);}
 .segBo{background:#E8A13B; color:#5C3D07;}
 .legend span{display:flex; align-items:center; gap:5px;}
 .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
+
+/* --- todo stats --- */
+#tsAvg{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-top:2px;}
+#tsAvg .k{font-size:12px; color:var(--muted);}
+#tsAvg .v{font-size:20px; font-weight:700; margin-top:3px; font-variant-numeric:tabular-nums;}
+.tsRow{margin-top:12px;}
+.tsTop{display:flex; align-items:baseline; gap:8px; font-size:14px;}
+.tsTop .n{flex:1;}
+.tsTop .p{font-weight:700; font-variant-numeric:tabular-nums;}
+.tsTop .c{font-size:11px; color:var(--muted); font-variant-numeric:tabular-nums;}
+.tsTop .m{width:16px; text-align:center; font-weight:700;}
+.tsTop .m.no{color:var(--muted); font-weight:400;}
+.tsBar{height:8px; border-radius:5px; background:var(--line); margin-top:5px; overflow:hidden;}
+.tsFill{height:100%; border-radius:5px;}
+.lvHi{color:var(--teal);} .lvMid{color:var(--amber);} .lvLo{color:var(--danger);}
+.bgHi{background:var(--teal);} .bgMid{background:var(--amber);} .bgLo{background:var(--danger);}
 
 /* --- timeline --- */
 #tlWrap{position:relative; height:84px; margin-top:6px;}
@@ -351,6 +370,12 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
           <span><span class="sw" style="background:#453C8F"></span><span id="nightLbl">ночь</span></span>
           <span><span class="sw" style="background:#AFA9EC"></span>день</span>
         </div>
+      </div>
+
+      <h2 class="tog" data-sec="secTodo"><span>Выполнение дел · <span id="tsSuf">7 дней</span></span><span class="chev">▾</span></h2>
+      <div class="sec" id="secTodo">
+        <div id="tsAvg"></div>
+        <div id="tsList"></div>
       </div>
 
       <h2 class="tog" data-sec="secW">Вес<span class="chev">▾</span></h2>
@@ -601,6 +626,15 @@ onSnapshot(query(collection(db, 'todoItems'), orderBy('order')), snap => {
     setDoc(doc(db, 'todoItems', 'seed3'), {title: 'Чёрно-белые карточки', order: 3});
   }
   renderTodos();
+  renderHistory();
+});
+
+let allChecks = {};
+onSnapshot(collection(db, 'todoChecks'), snap => {
+  allChecks = {};
+  snap.docs.forEach(d => allChecks[d.id] = d.data() || {});
+  renderStats();
+  renderHistory();
 });
 
 function subChecks() {
@@ -706,14 +740,15 @@ $('todoAddBtn').onclick = () => {
   addDoc(collection(db, 'todoItems'), {title: v, order: Date.now()});
   $('todoInput').value = '';
 };
+const isDone = v => v === true || (!!v && typeof v === 'object' && v.v === true);
 function renderTodos() {
   const box = $('todoList');
   box.innerHTML = '';
   // в обычном режиме выполненные уходят вниз; в режиме редактирования — базовый порядок
   const list = todoEdit ? [...todos]
-    : [...todos].sort((a, b) => ((checks[a.id] ? 1 : 0) - (checks[b.id] ? 1 : 0)) || (a.order - b.order));
+    : [...todos].sort((a, b) => ((isDone(checks[a.id]) ? 1 : 0) - (isDone(checks[b.id]) ? 1 : 0)) || (a.order - b.order));
   list.forEach((td, i) => {
-    const done = !!checks[td.id];
+    const done = isDone(checks[td.id]);
     const row = document.createElement('div');
     row.className = 'todoRow' + (done ? ' done' : '');
     row.innerHTML = `<div class="box">${done ? '✓' : ''}</div><div class="t"></div>` +
@@ -726,7 +761,7 @@ function renderTodos() {
       if (e.target.classList.contains('up')) { swapTodo(i, i - 1); return; }
       if (e.target.classList.contains('dn')) { swapTodo(i, i + 1); return; }
       if (todoEdit) return;
-      setDoc(doc(db, 'todoChecks', curDay), {[td.id]: !done}, {merge: true});
+      setDoc(doc(db, 'todoChecks', curDay), {[td.id]: {v: !done, t: Date.now(), a: author}}, {merge: true});
     };
     box.appendChild(row);
   });
@@ -748,13 +783,25 @@ const evMeta = e => {
   if (e.type === 'diaper') return {ico: '🧷', lbl: 'Подгузник · ' + dName(e.d)};
   return {ico: '🍼', lbl: `Бутылочка · ${e.ml || '?'} мл`};
 };
+function historyItems() {
+  const list = events.map(e => ({kind: 'ev', e, t: e.t}));
+  for (const dk of Object.keys(allChecks)) {
+    for (const [id, v] of Object.entries(allChecks[dk] || {})) {
+      if (!v || typeof v !== 'object' || !v.t) continue;   // старые записи без времени пропускаем
+      const td = todos.find(x => x.id === id);
+      list.push({kind: 'td', t: v.t, author: v.a, on: v.v === true, title: td ? td.title : 'Дело'});
+    }
+  }
+  return list.sort((a, b) => b.t - a.t);
+}
 function renderHistory() {
   const box = $('histList');
   box.innerHTML = '';
-  if (!events.length) { box.innerHTML = '<p style="color:var(--muted);font-size:15px;">Записей пока нет.</p>'; return; }
+  const items = historyItems();
+  if (!items.length) { box.innerHTML = '<p style="color:var(--muted);font-size:15px;">Записей пока нет.</p>'; return; }
   let lastDk = null;
-  for (const e of events) {
-    const dk = dayKey(e.t);
+  for (const it of items) {
+    const dk = dayKey(it.t);
     if (dk !== lastDk) {
       lastDk = dk;
       const h = document.createElement('div');
@@ -762,12 +809,22 @@ function renderHistory() {
       h.textContent = dayLabel(dk);
       box.appendChild(h);
     }
-    const m = evMeta(e);
     const row = document.createElement('div');
-    row.className = 'evRow';
-    row.innerHTML = `<div class="ico">${m.ico}</div><div class="lbl">${m.lbl}</div>
-      <div class="tm">${fmtTime(e.t)}</div><div class="who ${e.author}">${e.author === 'N' ? 'Н' : 'В'}</div>`;
-    row.onclick = () => openEdit(e);
+    const who = it.kind === 'ev' ? it.e.author : it.author;
+    const badge = who ? `<div class="who ${who}">${who === 'N' ? 'Н' : 'В'}</div>` : '<div class="who"></div>';
+    if (it.kind === 'ev') {
+      const m = evMeta(it.e);
+      row.className = 'evRow';
+      row.innerHTML = `<div class="ico">${m.ico}</div><div class="lbl">${m.lbl}</div>
+        <div class="tm">${fmtTime(it.t)}</div>${badge}`;
+      row.onclick = () => openEdit(it.e);
+    } else {
+      row.className = 'evRow tdEv';
+      row.innerHTML = `<div class="ico">${it.on ? '✅' : '⬜️'}</div>
+        <div class="lbl"><span class="tdt"></span> <span class="sfx">${it.on ? 'отмечено' : 'снята отметка'}</span></div>
+        <div class="tm">${fmtTime(it.t)}</div>${badge}`;
+      row.querySelector('.tdt').textContent = it.title;
+    }
     box.appendChild(row);
   }
 }
@@ -836,6 +893,7 @@ function renderStats() {
   const today = dayKey(Date.now());
 
   renderTimeline();
+  renderTodoStats();
   $('dNext').disabled = statDate >= today;
   if (statPeriod === 'day') $('dLabel').textContent = dayLabel(statDate);
   else {
@@ -1256,6 +1314,49 @@ function renderWeights() {
     <span><span style="display:inline-block;width:14px;border-top:1.5px dashed var(--muted);"></span>медиана</span>
   </div>`;
 }
+function renderTodoStats() {
+  const N = statPeriod === 'month' ? 28 : 7;
+  $('tsSuf').textContent = N + ' дней';
+  const base = new Date(statDate + 'T12:00').getTime();
+  const tdk = dayKey(Date.now());
+  const days = [];
+  for (let i = N - 1; i >= 0; i--) {
+    const dk = dayKey(base - i * 86400000);
+    if (dk === tdk) continue;                       // сегодня ещё не закончился
+    if (!allChecks[dk] && !events.some(e => dayKey(e.t) === dk)) continue;  // день без активности
+    days.push(dk);
+  }
+  const box = $('tsList'), avg = $('tsAvg');
+  if (!todos.length || !days.length) {
+    avg.innerHTML = `<div class="k">Пока нечего считать</div>`;
+    box.innerHTML = `<p style="color:var(--muted);font-size:13px;margin-top:10px;">Статистика появится, когда наберётся хотя бы один завершённый день с делами.</p>`;
+    return;
+  }
+  const dayMode = statPeriod === 'day';
+  const dch = allChecks[statDate] || {};
+  const rows = todos.map(td => {
+    const done = days.filter(dk => allChecks[dk] && isDone(allChecks[dk][td.id])).length;
+    return {title: td.title, done, pct: done / days.length * 100, on: isDone(dch[td.id])};
+  });
+  if (!dayMode) rows.sort((a, b) => b.pct - a.pct);   // в режиме дня — свой порядок дел
+  const lvl = p => p >= 80 ? 'Hi' : p >= 50 ? 'Mid' : 'Lo';
+  const mean = rows.reduce((s, r) => s + r.pct, 0) / rows.length;
+  const dDone = rows.filter(r => r.on).length;
+  avg.innerHTML = (dayMode ? `<div class="k">${dayLabel(statDate)}</div>
+      <div class="v lv${lvl(dDone / rows.length * 100)}">${dDone} из ${rows.length}</div>
+      <div class="k" style="margin-top:3px;">в среднем за ${days.length} дн.: ${Math.round(mean)}%</div>`
+    : `<div class="k">Средний процент выполнения</div>
+      <div class="v lv${lvl(mean)}">${Math.round(mean)}%</div>
+      <div class="k" style="margin-top:3px;">учтено дней: ${days.length}</div>`);
+  box.innerHTML = rows.map(r => `<div class="tsRow">
+    <div class="tsTop">${dayMode ? `<span class="m ${r.on ? 'lvHi' : 'no'}">${r.on ? '✓' : '—'}</span>` : ''}
+      <span class="n"></span><span class="c">${r.done} из ${days.length} дн.</span>
+      <span class="p lv${lvl(r.pct)}">${Math.round(r.pct)}%</span></div>
+    <div class="tsBar"><div class="tsFill bg${lvl(r.pct)}" style="width:${r.pct.toFixed(1)}%;"></div></div>
+  </div>`).join('');
+  [...box.querySelectorAll('.tsTop .n')].forEach((el, i) => el.textContent = rows[i].title);
+}
+
 const durC = ms => { const m = Math.round(ms / 60000), h = Math.floor(m / 60); return h ? `${h}:${pad(m % 60)}` : `${m}м`; };
 function renderTimeline() {
   const dk = statDate;
