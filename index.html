@@ -177,13 +177,13 @@ h2.tog.closed .chev{transform:rotate(-90deg);}
 .bgHi{background:var(--teal);} .bgMid{background:var(--amber);} .bgLo{background:var(--danger);}
 
 /* --- timeline --- */
-#tlWrap{position:relative; height:84px; margin-top:6px;}
+#tlWrap{margin-top:6px;}
+.tlHalf{position:relative; height:84px; margin-bottom:6px;}
 .tlSeg{position:absolute; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; font-variant-numeric:tabular-nums; overflow:hidden; border-radius:3px;}
 .tlSeg.a{top:0; height:27px; background:var(--amber-soft); color:var(--amber);}
 .tlSeg.s{top:27px; height:27px; background:#453C8F; color:#D9D5F7;}
 .tlFeed{position:absolute; top:27px; width:8px; height:8px; border-radius:50%; background:var(--teal); border:1.5px solid var(--bg); transform:translate(-50%,-50%); z-index:2;}
 .tlTick{position:absolute; top:64px; font-size:9px; color:var(--muted); transform:translateX(-50%);}
-.tly{letter-spacing:1px; font-size:10px;}
 
 /* --- weight --- */
 #wChart svg{width:100%; height:auto; display:block; margin-top:4px;}
@@ -336,7 +336,7 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
           <span><span class="sw" style="background:#453C8F"></span>сон</span>
           <span><span class="sw" style="background:var(--amber-soft)"></span>бодрствование</span>
           <span><span class="sw" style="background:var(--teal); border-radius:50%;"></span>кормление</span>
-          <span>короткие блоки: ı = 15 мин</span>
+          <span>верх 0–12, низ 12–24 · цифры — минуты</span>
         </div>
       </div>
       <h2 class="tog" data-sec="secSA"><span>Сон и бодрствование · <span class="perSuf">7 дней</span></span><span class="chev">▾</span></h2>
@@ -1386,26 +1386,33 @@ function renderTimeline() {
     wrap.innerHTML = '<p style="color:var(--muted);font-size:13px;padding-top:22px;">Нет записей за этот день.</p>';
     return;
   }
-  let bar = '';
-  for (const g of segs) {
-    const w = pct(g.e) - pct(g.s);
-    let lbl = '';
-    if (w >= 4.5) lbl = durC(g.e - g.s);
-    else if (w >= 0.9) {
-      const q = Math.min(4, Math.max(1, Math.round((g.e - g.s) / 900000)));
-      lbl = `<span class="tly">${'ı'.repeat(q)}</span>`;
+  const feeds = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk);
+  const half = (h0, h1) => {
+    const a = d0 + h0 * 3600000, b = d0 + h1 * 3600000;
+    const p = t => (t - a) / (b - a) * 100;
+    let bar = '';
+    for (const g of segs) {
+      const s = Math.max(g.s, a), e = Math.min(g.e, b);
+      if (e <= s) continue;
+      const w = p(e) - p(s);
+      const full = g.e - g.s;
+      let lbl = '';
+      // от часа — «1:26», короче — просто минуты; совсем узкие блоки остаются без подписи
+      if (w >= 4.5) lbl = durC(full);
+      else if (w >= 2.2) lbl = String(Math.max(1, Math.round(full / 60000)));
+      bar += `<div class="tlSeg ${g.t}" style="left:${p(s).toFixed(2)}%;width:${w.toFixed(2)}%;">${lbl}</div>`;
     }
-    bar += `<div class="tlSeg ${g.t}" style="left:${pct(g.s).toFixed(2)}%;width:${w.toFixed(2)}%;">${lbl}</div>`;
-  }
-  let fd = '';
-  for (const f of events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk))
-    fd += `<div class="tlFeed" style="left:${pct(f.t).toFixed(2)}%;"></div>`;
-  let ticks = '';
-  for (const h of [0, 6, 12, 18, 24]) {
-    const tr = h === 0 ? 'transform:none;' : h === 24 ? 'transform:translateX(-100%);' : '';
-    ticks += `<div class="tlTick" style="left:${h / 24 * 100}%;${tr}">${h}:00</div>`;
-  }
-  wrap.innerHTML = `${bar}${fd}${ticks}`;
+    let fd = '';
+    for (const f of feeds) if (f.t >= a && f.t <= b)
+      fd += `<div class="tlFeed" style="left:${p(f.t).toFixed(2)}%;"></div>`;
+    let ticks = '';
+    for (let h = h0; h <= h1; h += 3) {
+      const tr = h === h0 ? 'transform:none;' : h === h1 ? 'transform:translateX(-100%);' : '';
+      ticks += `<div class="tlTick" style="left:${((h - h0) / (h1 - h0) * 100).toFixed(2)}%;${tr}">${h}:00</div>`;
+    }
+    return `<div class="tlHalf">${bar}${fd}${ticks}</div>`;
+  };
+  wrap.innerHTML = half(0, 12) + half(12, 24);
 }
 
 let wEdit = null;
