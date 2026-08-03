@@ -870,6 +870,7 @@ function daySleep(dk, iv) {
 const hrsN = ms => (ms / 3600000).toFixed(1).replace('.', ',').replace(',0', '');
 const hrsFmt = ms => hrsN(ms) + ' ч';
 const fmtN = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
+const isNightSess = s => { const h = new Date(s).getHours(); return h >= NIGHT_START || h < NIGHT_END; };
 function dayMetrics(dk, iv, awIv) {
   const feeds = events.filter(e => (e.type === 'breast' || e.type === 'bottle') && dayKey(e.t) === dk);
   const br = feeds.filter(e => e.type === 'breast').length;
@@ -880,6 +881,8 @@ function dayMetrics(dk, iv, awIv) {
     feeds: feeds.length, br, bo: feeds.length - br,
     ml: feeds.reduce((s, e) => s + (e.ml || 0), 0),
     avg: sess.length ? sess.reduce((s, [a, b]) => s + (b - a), 0) / sess.length : 0,
+    avgN: (n => n.length ? n.reduce((s, [a, b]) => s + (b - a), 0) / n.length : 0)(sess.filter(([a]) => isNightSess(a))),
+    avgD: (n => n.length ? n.reduce((s, [a, b]) => s + (b - a), 0) / n.length : 0)(sess.filter(([a]) => !isNightSess(a))),
     longest: sess.length ? Math.max(...sess.map(([a, b]) => b - a)) : 0,
     avgAwake: aw.length ? aw.reduce((s, [a, b]) => s + (b - a), 0) / aw.length : 0,
     wakeups: events.filter(e => e.type === 'wake' && dayKey(e.t) === dk).length,
@@ -913,12 +916,13 @@ function renderStats() {
       <div class="metric"><div class="k">Сон за день</div><div class="v">${m.sleep ? fmtDur(m.sleep) : '—'}</div></div>
       <div class="metric"><div class="k">Кормлений</div><div class="v">${m.feeds}</div>
         <div class="sub">🤱 ${m.br} · 🍼 ${m.bo}${m.ml ? ' · ' + m.ml + ' мл' : ''}</div></div>
-      <div class="metric"><div class="k">Средний сон</div><div class="v">${m.avg ? fmtDur(m.avg) : '—'}</div></div>
+      <div class="metric"><div class="k">Средний ночной сон</div><div class="v">${m.avgN ? fmtDur(m.avgN) : '—'}</div></div>
+      <div class="metric"><div class="k">Средний дневной сон</div><div class="v">${m.avgD ? fmtDur(m.avgD) : '—'}</div></div>
       <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${m.avgAwake ? fmtDur(m.avgAwake) : '—'}</div></div>
       <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${m.longest ? fmtDur(m.longest) : '—'}</div></div>
-      <div class="metric"><div class="k">Пробуждений</div><div class="v">${m.wakeups}</div></div>
-      <div class="metric" style="grid-column:1/-1;"><div class="k">Подгузников</div><div class="v">${m.dp.n}</div>
-        <div class="sub">💧 мокрых ${m.dp.wet} · 💩 грязных ${m.dp.dirty}</div></div>`;
+      <div class="metric"><div class="k">Подгузников</div><div class="v">${m.dp.n}</div>
+        <div class="sub">💧 ${m.dp.wet} · 💩 ${m.dp.dirty}</div></div>
+      <div class="metric"><div class="k">Пробуждений</div><div class="v">${m.wakeups}</div></div>`;
   } else {
     // окно из 7 или 28 дней, заканчивающееся выбранной датой; сегодняшний (неполный) день и дни без записей в средних не участвуют
     const N = statPeriod === 'week' ? 7 : 28;
@@ -932,7 +936,9 @@ function renderStats() {
     const avgBr = avgOf(m => m.br), avgBo = avgOf(m => m.bo), avgMl = avgOf(m => m.ml);
     const avgWake = avgOf(m => m.wakeups);
     const sessW = iv.filter(([s, e]) => wdays.includes(dayKey(e)));
-    const avgSess = sessW.length ? sessW.reduce((s, [a, b]) => s + (b - a), 0) / sessW.length : 0;
+    const meanOf = arr => arr.length ? arr.reduce((s, [a, b]) => s + (b - a), 0) / arr.length : 0;
+    const avgSessN = meanOf(sessW.filter(([a]) => isNightSess(a)));
+    const avgSessD = meanOf(sessW.filter(([a]) => !isNightSess(a)));
     const longW = sessW.length ? Math.max(...sessW.map(([a, b]) => b - a)) : 0;
     const awW = awIv.filter(([s, e]) => wdays.includes(dayKey(e)));
     const avgAwW = awW.length ? awW.reduce((s, [a, b]) => s + (b - a), 0) / awW.length : 0;
@@ -940,12 +946,13 @@ function renderStats() {
       <div class="metric"><div class="k">Сон в сутки, ср.</div><div class="v">${avgSleep ? fmtDur(avgSleep) : '—'}</div></div>
       <div class="metric"><div class="k">Кормлений в день, ср.</div><div class="v">${avgFeeds ? fmtN(avgFeeds) : '—'}</div>
         <div class="sub">🤱 ${fmtN(avgBr)} · 🍼 ${fmtN(avgBo)}${avgMl ? ' · ' + Math.round(avgMl) + ' мл' : ''}</div></div>
-      <div class="metric"><div class="k">Средний сон</div><div class="v">${avgSess ? fmtDur(avgSess) : '—'}</div></div>
+      <div class="metric"><div class="k">Средний ночной сон</div><div class="v">${avgSessN ? fmtDur(avgSessN) : '—'}</div></div>
+      <div class="metric"><div class="k">Средний дневной сон</div><div class="v">${avgSessD ? fmtDur(avgSessD) : '—'}</div></div>
       <div class="metric"><div class="k">Среднее бодрствование</div><div class="v">${avgAwW ? fmtDur(avgAwW) : '—'}</div></div>
       <div class="metric"><div class="k">Самый длинный сон</div><div class="v">${longW ? fmtDur(longW) : '—'}</div></div>
-      <div class="metric"><div class="k">Пробуждений в день, ср.</div><div class="v">${avgWake ? fmtN(avgWake) : '—'}</div></div>
-      <div class="metric" style="grid-column:1/-1;"><div class="k">Подгузников в день, ср.</div><div class="v">${fmtN(avgOf(m => m.dp.n))}</div>
-        <div class="sub">💧 мокрых ${fmtN(avgOf(m => m.dp.wet))} · 💩 грязных ${fmtN(avgOf(m => m.dp.dirty))}</div></div>`;
+      <div class="metric"><div class="k">Подгузников в день, ср.</div><div class="v">${fmtN(avgOf(m => m.dp.n))}</div>
+        <div class="sub">💧 ${fmtN(avgOf(m => m.dp.wet))} · 💩 ${fmtN(avgOf(m => m.dp.dirty))}</div></div>
+      <div class="metric"><div class="k">Пробуждений в день, ср.</div><div class="v">${avgWake ? fmtN(avgWake) : '—'}</div></div>`;
   }
 
   // --- колонки графиков: 7 дней или 4 недели со средними «за сутки» ---
