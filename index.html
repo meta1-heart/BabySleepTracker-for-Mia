@@ -184,6 +184,7 @@ h2.tog.closed .chev{transform:rotate(-90deg);}
 .tlSeg.s{top:27px; height:27px; background:#453C8F; color:#D9D5F7;}
 .tlFeed{position:absolute; top:27px; width:8px; height:8px; border-radius:50%; background:var(--teal); border:1.5px solid var(--bg); transform:translate(-50%,-50%); z-index:2;}
 .tlTick{position:absolute; top:64px; font-size:9px; color:var(--muted); transform:translateX(-50%);}
+.tlTick.mi{font-size:8px; opacity:.55;}
 
 /* --- weight --- */
 #wChart svg{width:100%; height:auto; display:block; margin-top:4px;}
@@ -786,6 +787,18 @@ const evMeta = e => {
   if (e.type === 'diaper') return {ico: '🧷', lbl: 'Подгузник · ' + dName(e.d)};
   return {ico: '🍼', lbl: `Бутылочка · ${e.ml || '?'} мл`};
 };
+function durationsByEvent() {
+  const asc = [...events].reverse().filter(e => e.type === 'sleep' || e.type === 'wake');
+  const map = new Map();
+  let runStart = null, runType = null;
+  for (const e of asc) {
+    if (e.type !== runType) {
+      if (runStart !== null && e.t > runStart) map.set(e.id, e.t - runStart);
+      runStart = e.t; runType = e.type;
+    }
+  }
+  return map;
+}
 function historyItems() {
   const list = events.map(e => ({kind: 'ev', e, t: e.t}));
   for (const dk of Object.keys(allChecks)) {
@@ -802,6 +815,7 @@ function renderHistory() {
   box.innerHTML = '';
   const items = historyItems();
   if (!items.length) { box.innerHTML = '<p style="color:var(--muted);font-size:15px;">Записей пока нет.</p>'; return; }
+  const durMap = durationsByEvent();
   let lastDk = null;
   for (const it of items) {
     const dk = dayKey(it.t);
@@ -817,8 +831,10 @@ function renderHistory() {
     const badge = who ? `<div class="who ${who}">${who === 'N' ? 'Н' : 'В'}</div>` : '<div class="who"></div>';
     if (it.kind === 'ev') {
       const m = evMeta(it.e);
+      const d = durMap.get(it.e.id);
+      const sub = d ? `<div class="sub">${it.e.type === 'wake' ? 'спала' : 'бодрствовала'} ${fmtDur(d)}</div>` : '';
       row.className = 'evRow';
-      row.innerHTML = `<div class="ico">${m.ico}</div><div class="lbl">${m.lbl}</div>
+      row.innerHTML = `<div class="ico">${m.ico}</div><div class="lbl">${m.lbl}${sub}</div>
         <div class="tm">${fmtTime(it.t)}</div>${badge}`;
       row.onclick = () => openEdit(it.e);
     } else {
@@ -1413,9 +1429,12 @@ function renderTimeline() {
     for (const f of feeds) if (f.t >= a && f.t <= b)
       fd += `<div class="tlFeed" style="left:${p(f.t).toFixed(2)}%;"></div>`;
     let ticks = '';
-    for (let h = h0; h <= h1; h += 3) {
-      const tr = h === h0 ? 'transform:none;' : h === h1 ? 'transform:translateX(-100%);' : '';
-      ticks += `<div class="tlTick" style="left:${((h - h0) / (h1 - h0) * 100).toFixed(2)}%;${tr}">${h}:00</div>`;
+    for (let h = h0; h <= h1 + 0.001; h += 1.5) {
+      const minor = Math.abs((h - h0) % 3) > 0.001;      // промежуточные — мельче и бледнее
+      const hh = Math.floor(h + 0.001), mm = Math.round((h - hh) * 60);
+      const tr = Math.abs(h - h0) < 0.001 ? 'transform:none;'
+        : Math.abs(h - h1) < 0.001 ? 'transform:translateX(-100%);' : '';
+      ticks += `<div class="tlTick${minor ? ' mi' : ''}" style="left:${((h - h0) / (h1 - h0) * 100).toFixed(2)}%;${tr}">${hh}:${pad(mm)}</div>`;
     }
     return `<div class="tlHalf">${bar}${fd}${ticks}</div>`;
   };
