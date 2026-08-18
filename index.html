@@ -61,6 +61,7 @@ main{flex:1; overflow:hidden; position:relative;}
 #statusCard .big{font-size:44px; line-height:1;}
 #statusCard .label{font-size:20px; font-weight:700; margin-top:8px;}
 #statusCard .since{font-size:14px; opacity:.85; margin-top:4px; font-variant-numeric:tabular-nums;}
+#statusCard .prev{font-size:12px; opacity:.55; margin-top:3px; font-variant-numeric:tabular-nums;}
 #statusCard .quick{margin-top:16px; font:inherit; font-size:15px; font-weight:700; padding:11px 24px; border-radius:999px; border:none; position:relative; z-index:1;}
 #statusCard.sleep .quick{background:var(--night-text); color:var(--night);}
 #statusCard.awake .quick{background:var(--awake-text); color:var(--awake);}
@@ -659,8 +660,8 @@ setInterval(() => {
 /* ---------- status ---------- */
 function lastState() {
   for (const e of events) {
-    if (e.type === 'sleep') return {s: 'sleep', t: e.t};
-    if (e.type === 'wake') return {s: 'awake', t: e.t};
+    if (e.type === 'sleep') return {s: 'sleep', t: e.t, id: e.id};
+    if (e.type === 'wake') return {s: 'awake', t: e.t, id: e.id};
   }
   return null;
 }
@@ -675,6 +676,8 @@ function renderStatus() {
     return;
   }
   const dur = fmtDur(Date.now() - st.t);
+  const prevMs = durationsByEvent().get(st.id);
+  const prev = prevMs ? `<div class="prev">до этого ${st.s === 'sleep' ? 'бодрствовала' : 'спала'} ${fmtDur(prevMs)}</div>` : '';
   if (st.s === 'sleep') {
     card.className = 'sleep';
     card.innerHTML =
@@ -686,13 +689,13 @@ function renderStatus() {
        <span class="zzz" style="top:30%;right:22%;animation-delay:1.1s;">z</span>
        <span class="zzz" style="top:26%;right:30%;animation-delay:2.2s;">z</span>
        <div class="big">🌙</div><div class="label">Мия спит</div>
-       <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>
+       <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>${prev}
        <button class="quick" id="quickBtn">☀️ Проснулась</button>`;
   } else {
     card.className = 'awake';
     card.innerHTML =
       `<div class="big"><span id="sunwrap">☀️</span></div><div class="label">Мия бодрствует</div>
-       <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>
+       <div class="since">уже ${dur} · с ${fmtTime(st.t)}</div>${prev}
        <button class="quick" id="quickBtn">🌙 Уснула</button>`;
   }
   const qb = $('quickBtn');
