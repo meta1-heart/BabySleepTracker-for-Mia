@@ -21,7 +21,6 @@
   --pink:#993556; --pink-soft:#FBEAF0;
   --amber:#B97A10; --amber-soft:#FAEEDA;
   --danger:#C43B3B;
-  --bg0:rgba(247,245,252,0);
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -33,7 +32,6 @@
     --pink:#ED93B1; --pink-soft:#3D2230;
     --amber:#FAC775; --amber-soft:#3B3020;
     --danger:#F09595;
-    --bg0:rgba(23,21,42,0);
   }
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0;}
@@ -97,17 +95,14 @@ main{flex:1; overflow:hidden; position:relative;}
 #todoAdd input{flex:1; font:inherit; font-size:16px; padding:10px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--text);}
 #todoAdd button{font:inherit; font-weight:600; padding:10px 16px; border-radius:12px; border:none; background:var(--primary); color:#fff;}
 
-/* --- нижний док: панель действий и тост живут в одном непрозрачном блоке,
-       который перехватывает все касания — под ним ничего не нажимается --- */
-#bottomDock{
-  position:absolute; left:0; right:0; bottom:0; z-index:5;
-  padding:0 20px calc(14px + env(safe-area-inset-bottom));
-  background:linear-gradient(to bottom, var(--bg0) 0, var(--bg) 26px);
-  transition:opacity .25s, transform .25s;
+/* --- action bar --- */
+#actionBar{
+  position:absolute; left:20px; right:20px;
+  bottom:calc(14px + env(safe-area-inset-bottom));
+  display:grid; grid-template-columns:1fr 1fr 60px; gap:8px;
+  transition:opacity .25s, transform .25s; z-index:5;
 }
-#bottomDock::before{content:''; display:block; height:26px;}  /* мёртвое поле над кнопками */
-#bottomDock.hiddenFab{opacity:0; pointer-events:none; transform:translateY(12px) scale(.98);}
-#actionBar{display:grid; grid-template-columns:1fr 1fr 60px; gap:8px;}
+#actionBar.hiddenFab{opacity:0; pointer-events:none; transform:translateY(12px) scale(.97);}
 #actionBar button{
   height:56px; border-radius:16px; font:inherit; font-size:15px; font-weight:700;
   display:flex; align-items:center; justify-content:center; gap:7px;
@@ -121,20 +116,23 @@ main{flex:1; overflow:hidden; position:relative;}
 #actionBar #fab{font-size:24px; font-weight:600; color:var(--muted);}
 @media (prefers-color-scheme: dark){ #actionBar #actSleep{color:#1C1836;} }
 
-/* --- тост: занимает МЕСТО панели действий, а не появляется над списком --- */
+/* --- toast (отмена / поправка времени) --- */
 #toast{
+  position:absolute; left:20px; right:20px;
+  bottom:calc(84px + env(safe-area-inset-bottom));
   background:var(--night); color:var(--night-text);
-  border-radius:16px; padding:9px 12px 10px 14px;
-  box-shadow:0 6px 20px rgba(20,16,50,.32);
+  border-radius:16px; padding:11px 12px 11px 14px; z-index:7;
+  box-shadow:0 8px 26px rgba(20,16,50,.38);
+  transition:opacity .22s, transform .22s;
 }
-#toast.hiddenT{display:none;}
+#toast.hiddenT{opacity:0; pointer-events:none; transform:translateY(8px);}
 #toast .tRow{display:flex; align-items:center; gap:10px;}
-#toastMsg{flex:1; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums;}
-#toastUndo{font:inherit; font-size:13px; font-weight:700; background:none; border:none; color:#B9B1FF; padding:2px;}
-#toast .tShift{display:flex; align-items:center; gap:6px; margin-top:7px;}
-#toast .tShift .lb{font-size:11px; opacity:.55; margin-right:2px;}
+#toastMsg{flex:1; font-size:14px; font-weight:600; font-variant-numeric:tabular-nums;}
+#toastUndo{font:inherit; font-size:14px; font-weight:700; background:none; border:none; color:#B9B1FF; padding:2px;}
+#toast .tShift{display:flex; align-items:center; gap:6px; margin-top:9px;}
+#toast .tShift .lb{font-size:11px; opacity:.6; margin-right:2px;}
 #toast .tShift button{
-  font:inherit; font-size:12px; font-weight:600; padding:5px 10px; border-radius:999px;
+  font:inherit; font-size:12px; font-weight:600; padding:6px 11px; border-radius:999px;
   border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.09); color:var(--night-text);
   font-variant-numeric:tabular-nums;
 }
@@ -444,20 +442,18 @@ nav svg{width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.
     </section>
 
   </div>
-  <div id="bottomDock">
-    <div id="toast" class="hiddenT">
-      <div class="tRow"><span id="toastMsg"></span><button id="toastUndo">Отменить</button></div>
-      <div class="tShift">
-        <span class="lb">поправить:</span>
-        <button data-shift="5">−5 мин</button>
-        <button data-shift="10">−10</button>
-        <button data-shift="15">−15</button>
-      </div>
-    </div>
-    <div id="actionBar">
-      <button id="actSleep"><span class="e">🌙</span><span class="t">Уснула</span></button>
-      <button id="actFeed"><span class="e">🤱</span><span class="t">Кормление</span></button>
-      <button id="fab" aria-label="Другая запись">＋</button>
+  <div id="actionBar">
+    <button id="actSleep"><span class="e">🌙</span><span class="t">Уснула</span></button>
+    <button id="actFeed"><span class="e">🤱</span><span class="t">Кормление</span></button>
+    <button id="fab" aria-label="Другая запись">＋</button>
+  </div>
+  <div id="toast" class="hiddenT">
+    <div class="tRow"><span id="toastMsg"></span><button id="toastUndo">Отменить</button></div>
+    <div class="tShift">
+      <span class="lb">поправить:</span>
+      <button data-shift="5">−5 мин</button>
+      <button data-shift="10">−10</button>
+      <button data-shift="15">−15</button>
     </div>
   </div>
 </main>
@@ -805,14 +801,10 @@ $('actSleep').onclick = async () => {
 
 /* ---------- тост: отмена + поправка времени ---------- */
 let toastRef = null, toastBase = 0, toastShift = 0, toastLbl = '', toastTimer = null;
-/* после того как тост убрался, ~0.7 с игнорируем касания списка дел:
-   палец часто ещё летит к кнопке, которой уже нет */
-let tapGuard = 0;
 async function logEvent(data, label) {
   const ref = await addDoc(collection(db, 'events'), data);
   toastRef = ref; toastBase = data.t; toastShift = 0; toastLbl = label;
   paintToast();
-  $('actionBar').classList.add('hidden');   // тост встаёт РОВНО на место панели
   $('toast').classList.remove('hiddenT');
   armToast();
 }
@@ -820,20 +812,9 @@ function paintToast() {
   $('toastMsg').textContent = `${toastLbl} · ${fmtTime(toastBase - toastShift * 60000)}`
     + (toastShift ? ` (−${toastShift} мин)` : '');
 }
-function armToast() { clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 5500); }
-function hideToast() {
-  clearTimeout(toastTimer);
-  $('toast').classList.add('hiddenT');
-  $('actionBar').classList.remove('hidden');
-  toastRef = null;
-  tapGuard = Date.now() + 700;
-}
+function armToast() { clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 6500); }
+function hideToast() { clearTimeout(toastTimer); $('toast').classList.add('hiddenT'); toastRef = null; }
 $('toastUndo').onclick = async () => { const r = toastRef; hideToast(); if (r) await deleteDoc(r); };
-// касание по пустому месту тоста — сразу вернуть панель действий
-$('toast').onclick = e => { if (!e.target.closest('button')) hideToast(); };
-$('todoList').addEventListener('click', e => {
-  if (Date.now() < tapGuard) { e.stopPropagation(); e.preventDefault(); }
-}, true);
 document.querySelectorAll('#toast .tShift button').forEach(b => b.onclick = async () => {
   if (!toastRef) return;
   toastShift += +b.dataset.shift;
@@ -1331,7 +1312,7 @@ function setPanel(i, animate = true) {
   panels.style.transition = animate ? 'transform .3s cubic-bezier(.3,1,.4,1)' : 'none';
   panels.style.transform = `translateX(${-curPanel * (100 / 3)}%)`;
   [0, 1, 2].forEach(n => $('tab' + n).classList.toggle('on', n === curPanel));
-  $('bottomDock').classList.toggle('hiddenFab', curPanel !== 0);
+  $('actionBar').classList.toggle('hiddenFab', curPanel !== 0);
 }
 [0, 1, 2].forEach(n => $('tab' + n).onclick = () => setPanel(n));
 
@@ -1493,34 +1474,6 @@ const wAge = t => {
   return fmtN(ageM(t)) + ' мес';
 };
 let weights = [];
-/* Подписи точек на графиках роста/веса.
-   Чётные — сверху, нечётные — снизу (так вдвое больше места по горизонтали).
-   Идём от последнего измерения к первому: свежие подписи важнее, поэтому если
-   две всё равно налезают друг на друга — прячется та, что левее (старее).
-   Обводка цветом фона — чтобы цифра читалась поверх коридора нормы. */
-function ptLabels(pts, fmt, geo, color) {
-  const {W, L, R, T, H, B} = geo;
-  const CW = 4.7;                       // ширина символа при font-size 9
-  const busy = {up: Infinity, dn: Infinity};
-  const out = [];
-  for (let i = pts.length - 1; i >= 0; i--) {
-    const p = pts[i];
-    const txt = fmt(p[2]);
-    const half = txt.length * CW / 2 + 4;
-    let side = i % 2 ? 'dn' : 'up';
-    if (side === 'up' && p[1] - 9 < T + 6) side = 'dn';
-    if (side === 'dn' && p[1] + 13 > H - B - 2) side = 'up';
-    const x = Math.min(Math.max(p[0], L + half), W - R - half);
-    if (x + half > busy[side]) continue;  // всё равно налезает — пропускаем
-    busy[side] = x - half;
-    const y = side === 'up' ? p[1] - 9 : p[1] + 14;
-    out.push(`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-size="9" font-weight="700"`
-      + ` fill="${color}" text-anchor="middle" paint-order="stroke"`
-      + ` stroke="var(--bg)" stroke-width="2.5" stroke-linejoin="round">${txt}</text>`);
-  }
-  return out.join('');
-}
-
 function renderWeights() {
   const box = $('wChart'), tb = $('wTable');
   const ws = [...weights].sort((a, b) => a.t - b.t);
@@ -1567,8 +1520,8 @@ function renderWeights() {
     xt += `<text x="${xs(m).toFixed(1)}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="middle">${m}м</text>`;
   const pts = ws.map(w => [xs(Math.min(ageM(w.t), Xmax)), ys(w.kg), w.kg]);
   const line = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--primary)"/>`).join('')
-    + ptLabels(pts, kgF, {W, L, R, T, H, B}, 'var(--text)');
+  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--primary)"/>
+    <text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" font-weight="700" fill="var(--text)" text-anchor="middle">${kgF(p[2])}</text>`).join('');
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${grid}
     <polygon points="${up.join(' ')} ${dn.join(' ')}" fill="var(--primary)" opacity="0.12"/>
@@ -1770,8 +1723,8 @@ function renderHeights() {
     xt += `<text x="${xs(m).toFixed(1)}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="middle">${m}м</text>`;
   const pts = hs.map(w => [xs(Math.min(ageM(w.t), Xmax)), ys(w.cm), w.cm]);
   const line = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--teal)"/>`).join('')
-    + ptLabels(pts, cmF, {W, L, R, T, H, B}, 'var(--text)');
+  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="var(--teal)"/>
+    <text x="${p[0].toFixed(1)}" y="${(p[1] - 8).toFixed(1)}" font-size="9" font-weight="700" fill="var(--text)" text-anchor="middle">${cmF(p[2])}</text>`).join('');
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     ${grid}
     <polygon points="${up.join(' ')} ${dn.join(' ')}" fill="var(--teal)" opacity="0.12"/>
