@@ -79,6 +79,15 @@ main{flex:1; overflow:hidden; position:relative;}
 #feedCard .d, #sleepCard .d{font-size:13px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums;}
 /* какая грудь была — словом справа, зелёным, чтобы читалось спросонья */
 #feedCard .sideName{font-size:15px; font-weight:800; color:var(--teal); letter-spacing:.4px;}
+/* тап по зелёному слову — мгновенная запись кормления противоположной грудью.
+   Обводка подсказывает, что это кнопка; надпись прежняя. */
+#feedCard .sideBtn{
+  display:block; margin-top:3px; margin-left:auto; padding:9px 12px;
+  border:1.5px solid var(--teal); border-radius:12px; background:var(--teal-soft);
+  font:inherit; line-height:1;
+}
+#feedCard .sideBtn:active{transform:scale(.96);}
+#feedCard .sideBtn:disabled{opacity:.5;}
 #feedCard .prev{font-size:12px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums;}
 #feedCard .d{white-space:nowrap;} #feedCard .main{min-width:0;}
 .star{position:absolute; color:#CDC7FF; font-size:11px; animation:twinkle 2.6s ease-in-out infinite;}
@@ -748,16 +757,29 @@ function renderFeedCard() {
   fc.classList.remove('hidden');
   const isBr = lastFeed.type === 'breast';
   const sd = lastFeed.side;
-  const what = isBr
-    ? (sd ? `<span class="sideName">${sideName(sd).toUpperCase()}</span>` : 'грудь')
-    : `${lastFeed.ml || '?'} мл`;
-  // перерыв между предыдущим и последним кормлением (не до текущего момента)
+  const ago = Date.now() - lastFeed.t;
+  // если последнее кормление было одной грудью — предлагаем записать противоположную
+  const nx = (isBr && (sd === 'L' || sd === 'R')) ? (sd === 'L' ? 'R' : 'L') : null;
+  const acc = x => x === 'L' ? 'левую' : 'правую';
+  const what = nx
+    ? `<button class="sideBtn" data-next="${nx}" aria-label="Записать кормление: ${acc(nx)} грудь"><span class="sideName">${sideName(sd).toUpperCase()}</span></button>`
+    : isBr
+      ? (sd ? `<span class="sideName">${sideName(sd).toUpperCase()}</span>` : 'грудь')
+      : `${lastFeed.ml || '?'} мл`;
+  // перерыв между предыдущим и последним кормлением (не до текущего момента).
+  // «3 ч 05» вместо «3 ч 05 мин» — иначе строка переносится рядом с кнопкой
+  const shortDur = ms => { const t = fmtDur(ms); return t.includes(' ч ') ? t.replace(/ мин$/, '') : t; };
   const prev = prevFeed
-    ? `<div class="prev">до этого — ${fmtDur(lastFeed.t - prevFeed.t)} назад</div>` : '';
+    ? `<div class="prev">до этого — ${shortDur(lastFeed.t - prevFeed.t)} назад</div>` : '';
   fc.innerHTML = `<div class="ico">🍼</div>
     <div class="main"><div class="k">Последнее кормление</div>
-    <div class="v">${fmtDur(Date.now() - lastFeed.t)} назад</div>${prev}</div>
-    <div class="d">${fmtTime(lastFeed.t)}<br>${what}</div>`;
+    <div class="v">${ago < 60000 ? 'только что' : fmtDur(ago) + ' назад'}</div>${prev}</div>
+    <div class="d">${fmtTime(lastFeed.t)}${nx ? '' : '<br>'}${what}</div>`;
+  const qb = fc.querySelector('.sideBtn');
+  if (qb) qb.onclick = async () => {
+    qb.disabled = true;   // защита от двойного срабатывания, пока запись уходит в базу
+    await addDoc(collection(db, 'events'), {type: 'breast', t: Date.now(), author, ml: null, side: qb.dataset.next});
+  };
 }
 
 /* ---------- todo ---------- */
