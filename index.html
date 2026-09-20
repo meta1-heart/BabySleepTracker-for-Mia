@@ -17,7 +17,7 @@
   --primary:#6C60D8; --primary-soft:#EEECFB;
   --night:#2E2A5C; --night-text:#EDEBFF;
   --awake:#FFF1D0; --awake-text:#8A5B08;
-  --teal:#0F6E56; --teal-soft:#E1F5EE;
+  --teal:#0F6E56; --teal-soft:#E1F5EE; --teal-glow:rgba(15,110,86,.25);
   --pink:#993556; --pink-soft:#FBEAF0;
   --amber:#B97A10; --amber-soft:#FAEEDA;
   --danger:#C43B3B;
@@ -29,7 +29,7 @@
     --primary:#9C92F0; --primary-soft:#2C2850;
     --night:#262253; --night-text:#EDEBFF;
     --awake:#3A3050; --awake-text:#FFD98A;
-    --teal:#5DCAA5; --teal-soft:#173B31;
+    --teal:#5DCAA5; --teal-soft:#173B31; --teal-glow:rgba(93,202,165,.28);
     --pink:#ED93B1; --pink-soft:#3D2230;
     --amber:#FAC775; --amber-soft:#3B3020;
     --danger:#F09595;
@@ -77,17 +77,30 @@ main{flex:1; overflow:hidden; position:relative;}
 #feedCard .k, #sleepCard .k{font-size:12px; color:var(--muted);}
 #feedCard .v, #sleepCard .v{font-size:16px; font-weight:700; font-variant-numeric:tabular-nums;}
 #feedCard .d, #sleepCard .d{font-size:13px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums;}
-/* какая грудь была — словом справа, зелёным, чтобы читалось спросонья */
-#feedCard .sideName{font-size:15px; font-weight:800; color:var(--teal); letter-spacing:.4px;}
-/* тап по зелёному слову — мгновенная запись кормления противоположной грудью.
-   Обводка подсказывает, что это кнопка; надпись прежняя. */
+/* какая грудь была — словом справа, чтобы читалось спросонья */
+#feedCard .sideName{font-size:15px; font-weight:800; color:var(--teal); letter-spacing:.4px; display:block;}
+#feedCard .sideBtn .sideName{color:inherit;}
+#feedCard .sideCap{display:block; font-size:10px; font-weight:700; letter-spacing:.5px; opacity:.75; margin-bottom:2px;}
+/* тап по кнопке — мгновенная запись кормления противоположной грудью.
+   Приглушённый фиолетовый = грудь, которая БЫЛА (кнопка активна). */
 #feedCard .sideBtn{
-  display:block; margin-top:3px; margin-left:auto; padding:9px 12px;
-  border:1.5px solid var(--teal); border-radius:12px; background:var(--teal-soft);
-  font:inherit; line-height:1;
+  display:block; margin-top:3px; margin-left:auto; padding:6px 12px 7px;
+  border:1.5px solid var(--line); border-radius:12px; background:var(--primary-soft);
+  color:var(--primary); font:inherit; line-height:1.15; text-align:center;
 }
 #feedCard .sideBtn:active{transform:scale(.96);}
-#feedCard .sideBtn:disabled{opacity:.5;}
+/* кулдаун после записи: кнопка заблокирована и зелёным показывает,
+   какой грудью кормим ПРЯМО СЕЙЧАС. Пульсирующая обводка — что таймер идёт. */
+#feedCard .sideBtn.now{
+  border-color:var(--teal); background:var(--teal-soft); color:var(--teal);
+  animation:feedRing 2.2s ease-out infinite;
+}
+#feedCard .sideBtn:disabled{opacity:1;}
+@keyframes feedRing{
+  0%{box-shadow:0 0 0 0 var(--teal-glow);}
+  70%{box-shadow:0 0 0 8px rgba(0,0,0,0);}
+  100%{box-shadow:0 0 0 0 rgba(0,0,0,0);}
+}
 #feedCard .prev{font-size:12px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums;}
 #feedCard .d{white-space:nowrap;} #feedCard .main{min-width:0;}
 .star{position:absolute; color:#CDC7FF; font-size:11px; animation:twinkle 2.6s ease-in-out infinite;}
@@ -749,8 +762,15 @@ function renderSleepCard() {
     <div class="d">${fmtTime(last[0])}–${fmtTime(last[1])}</div>`;
 }
 
+// 2 минуты после записи кнопка заблокирована: ночью легко нажать дважды
+// и получить два кормления подряд. Состояние считается от времени последнего
+// кормления, а не от тапа — значит держится и на втором телефоне.
+const FEED_LOCK_MS = 2 * 60 * 1000;
+let feedLockTimer = null;
+
 function renderFeedCard() {
   const fc = $('feedCard');
+  clearTimeout(feedLockTimer);
   const feeds = events.filter(e => e.type === 'breast' || e.type === 'bottle');
   const lastFeed = feeds[0], prevFeed = feeds[1];
   if (!lastFeed) { fc.classList.add('hidden'); return; }
@@ -761,8 +781,14 @@ function renderFeedCard() {
   // если последнее кормление было одной грудью — предлагаем записать противоположную
   const nx = (isBr && (sd === 'L' || sd === 'R')) ? (sd === 'L' ? 'R' : 'L') : null;
   const acc = x => x === 'L' ? 'левую' : 'правую';
+  const instr = x => x === 'L' ? 'ЛЕВОЙ' : 'ПРАВОЙ';
+  const locked = ago < FEED_LOCK_MS;
+  if (locked) feedLockTimer = setTimeout(renderFeedCard, FEED_LOCK_MS - ago + 200);
   const what = nx
-    ? `<button class="sideBtn" data-next="${nx}" aria-label="Записать кормление: ${acc(nx)} грудь"><span class="sideName">${sideName(sd).toUpperCase()}</span></button>`
+    ? (locked
+      // только что записали — зелёным, какой грудью кормить сейчас
+      ? `<button class="sideBtn now" disabled aria-label="Сейчас кормим ${instr(sd).toLowerCase()} грудью. Кнопка снова сработает через пару минут"><span class="sideCap">кормим</span><span class="sideName">${instr(sd)}</span></button>`
+      : `<button class="sideBtn" data-next="${nx}" aria-label="Была ${sideName(sd)} грудь. Записать кормление: ${acc(nx)} грудь"><span class="sideCap">была</span><span class="sideName">${sideName(sd).toUpperCase()}</span></button>`)
     : isBr
       ? (sd ? `<span class="sideName">${sideName(sd).toUpperCase()}</span>` : 'грудь')
       : `${lastFeed.ml || '?'} мл`;
@@ -775,10 +801,16 @@ function renderFeedCard() {
     <div class="main"><div class="k">Последнее кормление</div>
     <div class="v">${ago < 60000 ? 'только что' : fmtDur(ago) + ' назад'}</div>${prev}</div>
     <div class="d">${fmtTime(lastFeed.t)}${nx ? '' : '<br>'}${what}</div>`;
-  const qb = fc.querySelector('.sideBtn');
+  const qb = fc.querySelector('.sideBtn:not(.now)');
   if (qb) qb.onclick = async () => {
-    qb.disabled = true;   // защита от двойного срабатывания, пока запись уходит в базу
-    await addDoc(collection(db, 'events'), {type: 'breast', t: Date.now(), author, ml: null, side: qb.dataset.next});
+    const side = qb.dataset.next;
+    // переключаем вид сразу, не дожидаясь ответа базы: кнопка гаснет,
+    // зелёным загорается грудь, которой кормить сейчас
+    qb.disabled = true;
+    qb.classList.add('now');
+    qb.querySelector('.sideCap').textContent = 'кормим';
+    qb.querySelector('.sideName').textContent = instr(side);
+    await addDoc(collection(db, 'events'), {type: 'breast', t: Date.now(), author, ml: null, side});
   };
 }
 
