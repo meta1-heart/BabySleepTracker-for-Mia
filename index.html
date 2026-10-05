@@ -615,17 +615,35 @@ const plural = (n, one, few, many) => {
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
 };
-function ageStr() {
-  const days = Math.floor((Date.now() - BIRTH.getTime()) / 86400000);
-  if (days < 0) return '';
-  if (days < 98) {
+/* Возраст на момент t — один формат для главного экрана и заметок веса/роста.
+   Месяцы календарные: 9-го числа исполняется ровно N мес.
+   До месяца: «2 нед 3 дня»; до года: «3 мес 3 нед (16 нед)» — полные недели
+   в скобках только на главном (full) и только до полугода; дальше «1 год 2 мес». */
+function ageStr(t = Date.now(), full = true) {
+  const now = new Date(t); now.setHours(0, 0, 0, 0);
+  const days = Math.round((now - BIRTH) / 86400000);
+  if (days < 0) return '—';
+  const monthDay = m => {
+    const a = new Date(BIRTH.getFullYear(), BIRTH.getMonth() + m, 1);
+    a.setDate(Math.min(BIRTH.getDate(), new Date(a.getFullYear(), a.getMonth() + 1, 0).getDate()));
+    return a;
+  };
+  let mo = (now.getFullYear() - BIRTH.getFullYear()) * 12 + now.getMonth() - BIRTH.getMonth();
+  if (monthDay(mo) > now) mo--;
+  if (mo < 1) {
     const w = Math.floor(days / 7), d = days % 7;
     let s = w > 0 ? `${w} нед` : '';
     if (d > 0) s += (s ? ' ' : '') + `${d} ${plural(d,'день','дня','дней')}`;
-    return s || 'родилась сегодня 💜';
+    return s || (full ? 'родилась сегодня 💜' : 'при рождении');
   }
-  const mo = Math.floor(days / 30.44);
-  return `${mo} мес`;
+  if (mo >= 12) {
+    const y = Math.floor(mo / 12), m = mo % 12;
+    return `${y} ${plural(y,'год','года','лет')}` + (m ? ` ${m} мес` : '');
+  }
+  const w = Math.floor(Math.round((now - monthDay(mo)) / 86400000) / 7);
+  let s = `${mo} мес` + (w ? ` ${w} нед` : '');
+  if (full && mo < 6) s += ` (${Math.floor(days / 7)} нед)`;
+  return s;
 }
 const dayLabel = dk => {
   const today = dayKey(Date.now());
@@ -1360,12 +1378,6 @@ function normAt(m) {
   const f = x - i, a = WHO_W[i], b = WHO_W[i + 1];
   return {p3: a[1] + (b[1] - a[1]) * f, p50: a[2] + (b[2] - a[2]) * f, p97: a[3] + (b[3] - a[3]) * f};
 }
-const wAge = t => {
-  const days = Math.floor((t - BIRTH.getTime()) / 86400000);
-  if (days < 0) return '—';
-  if (days < 98) { const w = Math.floor(days / 7), d = days % 7; return d ? `${w} нед ${d} дн` : `${w} нед`; }
-  return fmtN(ageM(t)) + ' мес';
-};
 let weights = [];
 /* Подписи точек на графиках веса и роста.
    Чётные — сверху, нечётные — снизу: так по горизонтали вдвое больше места.
@@ -1410,7 +1422,7 @@ function renderWeights() {
     const row = document.createElement('div');
     row.className = 'wRow';
     row.innerHTML = `<div class="wd">${new Date(w.t).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})}</div>
-      <div class="wa">${wAge(w.t)}</div>
+      <div class="wa">${ageStr(w.t, false)}</div>
       <div class="wv ${out ? 'out' : 'ok'}">${kgF(w.kg)} кг</div>
       <div class="wn ${out ? 'out' : 'ok'}">${kgF(n.p3)}–${kgF(n.p97)}</div>`;
     row.onclick = () => openW(w);
@@ -1612,7 +1624,7 @@ function renderHeights() {
     const row = document.createElement('div');
     row.className = 'wRow';
     row.innerHTML = `<div class="wd">${new Date(w.t).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})}</div>
-      <div class="wa">${wAge(w.t)}</div>
+      <div class="wa">${ageStr(w.t, false)}</div>
       <div class="wv ${out ? 'out' : 'ok'}">${cmF(w.cm)} см</div>
       <div class="wn ${out ? 'out' : 'ok'}">${cmF(n.p3)}–${cmF(n.p97)}</div>`;
     row.onclick = () => openH(w);
